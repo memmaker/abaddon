@@ -153,6 +153,182 @@ missing 7drl goals
    Quick regeneration
    */
 
+Schedule:
+ - Day 1:
+   - Simplify stats/classes, etc. remove all healing
+   - Change player default appearance
+   - Setup new level structure: Hell Town -> Dungeons of Doom -> Caves -> Crypt -> Cathedral Town
+   - Setup new unique bosses: cerberus (dog), rogue, murder hobos, avatar, inquisitor, evil king
+   - Change item flavors to hell theme
+   - Win & loose conditions
+   - Main menu / Options menu
+ - Day 2:
+   - Add horse mechanics:
+     - Allied actors, can fight alone
+     - Mount/unmount
+     - Abilities triggered by movement patterns
+		-> Hooves of Hell - Move towards an enemy and then away from him when he is next to you. Trigger horse kick with knockback.
+		-> Pounding: Move in a straight line towards an enemy twice, a third move in the same direction can now pin an enemy on the target tile.
+		-> Thunderstruck: Pay some health and wait a turn for an aoe lightning attack on all neighboring tiles
+     - Gory explosion on death
+   - Add sword of vengeance mechanics
+     - Save damage dealt with the sword as blood
+     - Adjust damage accordingly to blood counter
+     - Sacrifice blood counter for special attack
+ - Day 3:
+   - Add environmental stuff
+     - Exploding barrels
+     - Chasms
+     - Spikes
+     - Oil
+ - Day 4:
+   - Add abilities for the player and the enemies
+
+ - Day 5:
+   - Add unique items for the player advancement
+   - Adjust shopping
+
+ - Day 6:
+   - Playtesting & Balancing
+   - Bugfixes
+
+ - Day 7:
+   - Playtesting & Balancing
+   - Publishing
 
 
+Plan for the 7drl "Abaddon"
+ - We reverse the direction of the crawl, so the player is going to start in hell
+ - Remove: Classes, Mana, Regeneration
+ - Core idea: Try dealing more damage than you receive by using AoE and chain combos effectively.
+ - Core interactions:
+   - Clever use of relocation in combination with aoe
+   - Setup & Triggering of chained effects
+   - Bonus abilities triggered by movement patterns
+   - Change the environment to your advantage
+   -> Optimal play would mean moving in the right patterns as to maximize bonus abilities
+   -> While at the same time setting up enemies for a chain combo/area of effect ability
+   -> NOTE: Enable keyboard only interactions and fast activation of all abilities
 
+ - We want to support these basic play styles:
+   - All in melee damage build -> maximize sword of vengeance use
+   - Ranged/tactical build -> the main focus is on ranged abilities for relocation/terrain modification
+   - Companion build -> the main focus is on the horse abilities
+   - Defensive build -> the main focus is on mitigating damage and crowd control
+   -> We'll let the player choose from three of the four areas when leveling up
+
+ - Player is his own light source - You literally burn yourself.
+   - Decide how many hp you want to spend per step for more light radius
+
+ - Interesting upgrades for the player:
+   - Additional effects for the sword of vengeance, that would depend on it's damage
+     -> Create a very powerful sword
+     - Fire/Ice/Lightning procs
+     - Status effect procs
+     - Add bonus AC when using it in melee
+     - Actor relocation
+   - Additional effects that proc during the free horse maneuvers
+     - Fire/Ice/Lightning procs
+     - Status effect procs
+     - Terrain alteration
+     -> Create a very powerful companion
+   - Direct use abilities
+     -> Use the tools to maximize your damage output
+     - All of the abilities?
+   - Any form of damage mitigation
+     -> Defensive strategy
+
+ - Ice Spells: Damage + 50% Slow or 25% Freeze
+ - Fire Spells: Damage + 50% Damage over Time
+ - Lightning Spells: Damage + 50% Chain Lightning
+ - We want abilities that provide the following tools in an interesting and varied manner:
+   - Relocate actors
+     - Shuffle - Randomly repositions everyone on this floor
+     - Paired teleport - Teleports you and one target to random locations
+     - Swap Position - Swaps your position with a target
+     - Pull - Pulls a target towards you
+     - Push - Pushes a target away from you
+     - Implosion - Pulls all targets towards a target position
+     - Explosion - Pushes all targets away from a target position
+     - Gust of Wind - Pushes all targets in the same direction
+   - Deal damage to specific areas
+     - Circle
+     - Line
+     - Cone
+     - Reflecting ray
+   - Crowd control (Sleep, Immobilize, Pacify, Silence, Immolation)
+   - Altering the environment
+     - Earthquake - Flips walls/floors randomly
+     - Floor break - Creates a chasm
+     - Ceiling break - Will destroy the ceiling to create random walls and transport monster from above to this level
+     - Flatten - Remove all walls in an area
+     - Create oil - Will create a slippery, flammable area
+     - Create fire - Will create a damaging area
+     - Create water - Will create a slowing area
+     - Create spikes - Will create a damaging area
+     - Pacify - Remove all hazards & neutralize all enemies
+     - Raise Hell - Create random hazards and make all enemies begin in-fighting
+
+ - 6 medium to big sized dungeon levels with a unique enemy on each one.
+   1. Hell - cerberus - man's best friend - changing from dog icon to a bloodied 'd' when near death, a persistent and fast threat
+   2. Dungeons of Doom - a rogue - as '@' - a powerful single enemy with random skills
+   3. Caves - looting adventurers - the hobo murderer party - catch: a whole party with skills
+   4. Crypt - crusaders - the avatar of lies - uses illusions to waste the resources of the player
+   5. Cathedral - false prophets - the inquisitor - uses holy magic/water, will heal allies
+   6. Town - evil king and his soldiers - can summon enemies and cast powerful spells
+
+ - Award a unique item after every dungeon level and let the player choose between 3 options
+   -> We need at least 6*3 = 18 uniques to make this interesting
+
+ - Environmental interactions
+   - Exploding barrels
+   - Chasms
+   - Spiked Pits/Walls
+     - Enemies can be pushed into them
+   - Fire/Lava
+     - Can be turned into stone with an ice spell, neutralizing its effects, creating random walls
+     - Can be extended by sprinkling oil nearby
+   - Water
+     - Small to medium Enemies in the water can be drowned by moving unto them with the horse
+     - Movement through water is slower
+     - Can be turned into Unholy Water, dealing damage to "good" enemies on touch
+     - Can be turned into boiling Water with a fire spell, dealing damage to living things
+     - Can be turned into ice with a spell, enabling further knockback effects
+
+We need lots of stuff that creates knockback effects in semi-predictable manner
+ - Explosions/Implosions
+ - Kicks/Bashing/Tackling
+ - Traps
+
+ - No Story / NPCs
+
+ - A sword called Vengeance, absorbs the blood of your foes
+   - It will receive another damage dice for every 60 Points of Damage you dealt with it
+   - Progression table? 60 / 120 / 180 / 240 / 300 / 360
+
+ - A demon horse
+ - You start with the maximum amount of hitpoints and steadily loose them
+ - Using spells will also drain HP instead of MP
+ - No healing what-so-ever
+   - Healing from slaying bosses and absorbing their life force?
+   - Healing from dealing massive combo damage?
+ - But you become more powerful with every dungeon level and every enemy slain
+   - Player gains a level for every dungeon level he ascends
+
+ He was met at the gate of Hades
+ By the Guardian of the Lost Souls, the Keeper of the Unavenged
+ And He did say to him
+ "Let you not pass, abandon
+ Return to the world from whence you came
+ And seek payment, not only for thine own anguish
+ But vindicate the souls of the Unavenged"
+ And they placed in his hands a sword made for him
+ Called Vengeance, forged in brimstone
+ And tempered by the woeful tears of the Unavenged
+ And to carry him up on his journey back to the upper world
+ They brought forth their Demon horse called Black Death
+ A grim steed so fearsome in might and black in colour
+ That he could stand as one with the darkness
+ Save for his burning eyes of crimson fire
+ And on that night they rose up from Hell
+ The pounding of his hooves did clap like thunder

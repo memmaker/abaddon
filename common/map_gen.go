@@ -443,12 +443,15 @@ func MapTileFromLDTK(tileSet *ldtk.Tileset, layer *ldtk.Layer, tile *ldtk.Tile) 
 	transparent := !enums.Contains("IsBlockingView")
 	isDamaging := enums.Contains("IsDamaging")
 	isWater := enums.Contains("IsWater")
+	isChasm := enums.Contains("IsChasm")
 	specialTile := gridmap.SpecialTileNone
 
 	if isWater {
 		specialTile = gridmap.SpecialTileWater
 	} else if isDamaging {
 		specialTile = gridmap.SpecialTileDamaging
+	} else if isChasm {
+		specialTile = gridmap.SpecialTileChasm
 	}
 
 	tileType := gridmap.Tile{

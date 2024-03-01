@@ -161,10 +161,17 @@ func TriggerCellEffectsDuringMovementForActor(state *State, sourceAction Action,
 		objectAtLocation.ActorWalkedOn(actor, startAnimating)
 	}
 
-	if currentMap.GetCell(newPos).TileType.Special == gridmap.SpecialTileDamaging {
+	actorCell := currentMap.GetCell(newPos)
+	actorTile := actorCell.TileType
+
+	if actorTile.Special == gridmap.SpecialTileDamaging {
 		action := NewChangeResourceAction(sourceAction.Cause(), actor, stats.Health, -3)
 		action.SetAnimationStartPredicate(startAnimating)
 		return OneAction(action)
+	}/* else if actorTile.Special == gridmap.SpecialTileChasm {
+		state.SendActorOneLevelDown(actor)
+
 	}
+	*/
 	return nil
 }

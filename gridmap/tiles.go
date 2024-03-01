@@ -21,6 +21,7 @@ const (
 	SpecialTileForest
 	SpecialTileMountain
 	SpecialTileWater
+	SpecialTileChasm
 	SpecialTileSwamp
 	SpecialTileVoid
 	SpecialTileBed
@@ -143,6 +144,10 @@ func (t Tile) IsStairsUp() bool {
 
 func (t Tile) IsStairsDown() bool {
 	return t.Special == SpecialTileStairsDown
+}
+
+func (t Tile) IsChasm() bool {
+	return t.Special == SpecialTileChasm
 }
 
 type MapCell[ActorType interface {

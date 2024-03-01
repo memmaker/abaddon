@@ -104,12 +104,36 @@ Causes fear in all visible enemies.
 Scale distance with skill level (1-5)
 Will move the player in a straight line, dealing damage to all enemies in the way.
 Enemies adjacent to walls take more damage.
+Enemies adjacent to chasm tiles will be pushed into them.
 
 Triumph of steel
 Call to Odin
 
+
+
 == Earth Shaker
 Rush forward to a specified location, deal damage to all enemies in a specified area and push them back.
+
+== Dance on a String
+Targeting is a straight line.
+All tiles to the left and right of this line will become chasm tiles.
+Every enemy on the targeted line will become confused.
+
+== Slicer
+Throw your sword in a straight line.
+In a second action, pull it back, dealing damage to all enemies in the way.
+50% chance to push enemies into adjacent chasm tiles.
+
+== Battle Hymn
+Summon multiple ranks of undead soldiers for your cause.
+
+== Speed Demon
+Attack all visible enemies in quick succession, anime ninja style.
+
+== Bats out of hell
+Transform into a swarm of bats, which will go berserk for a few turns.
+You will receive damage for every bat that dies.
+
 
 Mage
 
@@ -118,4 +142,3 @@ Spells
     Burning rain
     Great thunder
     Eternal vow
-    Bat out of hell
