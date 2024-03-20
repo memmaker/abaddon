@@ -552,6 +552,14 @@ func (r *DungeonRoom) IsCornerPosition(posOne geometry.Point) bool {
 	}
 	return false
 }
+
+func (r *DungeonRoom) IsConnectorPosition(pos geometry.Point) bool {
+	shifted := pos.Sub(r.roomPositionOffset)
+	if _, ok := r.availableConnections[shifted]; ok {
+		return true
+	}
+	return false
+}
 func NewDungeonRoomFromTemplate(templateName string) *DungeonRoom {
 	rectRoom := &DungeonRoom{
 		usedTemplate:   templateName,

@@ -428,13 +428,20 @@ func (m *GridMap[ActorType, ItemType, ObjectType]) GetFreeCellsForDistribution(p
 	return freeCells
 }
 
-func (m *GridMap[ActorType, ItemType, ObjectType]) IsNextToTileWithSpecial(pos geometry.Point, specialType SpecialTileType) bool {
+func (m *GridMap[ActorType, ItemType, ObjectType]) IsCardinallyNextToTileWithSpecial(pos geometry.Point, specialType SpecialTileType) bool {
 	for _, neighbor := range m.GetAllCardinalNeighbors(pos) {
 		if m.CellAt(neighbor).TileType.Special == specialType {
 			return true
 		}
 	}
 	return false
+}
+
+func (m *GridMap[ActorType, ItemType, ObjectType]) IsNextToTileWithSpecial(pos geometry.Point, specialType SpecialTileType) bool {
+	neighborsWithSpecial := m.GetFilteredNeighbors(pos, func(point geometry.Point) bool {
+		return m.Contains(point) && m.IsSpecialAt(point, specialType)
+	})
+	return len(neighborsWithSpecial) > 0
 }
 
 func (m *GridMap[ActorType, ItemType, ObjectType]) RemoveItem(item ItemType) {
@@ -622,7 +629,11 @@ func (m *GridMap[ActorType, ItemType, ObjectType]) GetActor(p geometry.Point) Ac
 }
 
 func (m *GridMap[ActorType, ItemType, ObjectType]) RemoveActor(actor ActorType) bool {
-	m.cells[actor.MapPosition().X+actor.MapPosition().Y*m.mapWidth] = m.cells[actor.MapPosition().X+actor.MapPosition().Y*m.mapWidth].WithActorHereRemoved(actor)
+	if !m.Contains(actor.MapPosition()) {
+		return false
+	} else {
+		m.cells[actor.MapPosition().X+actor.MapPosition().Y*m.mapWidth] = m.cells[actor.MapPosition().X+actor.MapPosition().Y*m.mapWidth].WithActorHereRemoved(actor)
+	}
 	for i := len(m.allActors) - 1; i >= 0; i-- {
 		if m.allActors[i] == actor {
 			m.allActors = append(m.allActors[:i], m.allActors[i+1:]...)
@@ -777,6 +788,12 @@ func (m *GridMap[ActorType, ItemType, ObjectType]) GetFreeCardinalNeighbors(pos 
 	return freeNeighbors
 }
 
+func (m *GridMap[ActorType, ItemType, ObjectType]) GetFreeMovementNeighbors(pos geometry.Point) []geometry.Point {
+	return m.GetFilteredNeighborsForMovement(pos, func(p geometry.Point) bool {
+		return m.Contains(p) && m.IsCurrentlyPassable(p) && !m.IsObviousHazardAt(p)
+	})
+}
+
 func (m *GridMap[ActorType, ItemType, ObjectType]) displaceDownedActor(a ActorType) {
 	free := m.GetFreeCellsForDistribution(a.MapPosition(), 1, func(p geometry.Point) bool {
 		return !m.IsDownedActorAt(p) && m.IsWalkable(p)
@@ -834,6 +851,7 @@ func (m *GridMap[ActorType, ItemType, ObjectType]) CurrentlyPassableAndSafeForAc
 		return m.IsWalkableFor(p, person) && !m.IsObviousHazardAt(p)
 	}
 }
+
 func (m *GridMap[ActorType, ItemType, ObjectType]) IsWalkable(p geometry.Point) bool {
 	if !m.Contains(p) {
 		return false
@@ -932,7 +950,7 @@ func (m *GridMap[ActorType, ItemType, ObjectType]) GetPositionsByFilter(filter f
 	}
 	return result
 }
-func (m *GridMap[ActorType, ItemType, ObjectType]) GetNeighborWithSpecial(pos geometry.Point, specialType SpecialTileType) geometry.Point {
+func (m *GridMap[ActorType, ItemType, ObjectType]) GetCardinalNeighborWithSpecial(pos geometry.Point, specialType SpecialTileType) geometry.Point {
 	neighbors := m.GetAllCardinalNeighbors(pos)
 	for _, n := range neighbors {
 		if m.GetCell(n).TileType.Special == specialType {
@@ -1238,7 +1256,7 @@ func (m *GridMap[ActorType, ItemType, ObjectType]) RandomSpawnPosition() geometr
 		x := rand.Intn(m.mapWidth)
 		y := rand.Intn(m.mapHeight)
 		pos := geometry.Point{X: x, Y: y}
-		if m.IsCurrentlyPassable(pos) {
+		if m.CanPlaceActorHere(pos) {
 			return pos
 		}
 	}
@@ -1273,7 +1291,8 @@ func (m *GridMap[ActorType, ItemType, ObjectType]) RemoveNamedLocation(namedLoca
 }
 
 func (m *GridMap[ActorType, ItemType, ObjectType]) IsDamagingTileAt(p geometry.Point) bool {
-	return m.CellAt(p).TileType.Special == SpecialTileDamaging
+	tileType := m.CellAt(p).TileType
+	return tileType.Special == SpecialTileSpikes || tileType.Special == SpecialTileLava || tileType.Special == SpecialTileChasm
 }
 
 func (m *GridMap[ActorType, ItemType, ObjectType]) RandomPosAround(pos geometry.Point) geometry.Point {
@@ -1797,6 +1816,44 @@ func (m *GridMap[ActorType, ItemType, ObjectType]) IsBorderWall(point geometry.P
 		return true
 	}
 	return false
+}
+
+func (m *GridMap[ActorType, ItemType, ObjectType]) IsDownedActor(actor ActorType) bool {
+	for _, downedActor := range m.allDownedActors {
+		if downedActor == actor {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *GridMap[ActorType, ItemType, ObjectType]) CanPlaceObjectHere(pos geometry.Point) bool {
+	return m.IsWalkable(pos) && !m.IsObjectAt(pos) && m.IsSpecialAt(pos, SpecialTileNone)
+}
+
+func (m *GridMap[ActorType, ItemType, ObjectType]) IsEmptyNonSpecialFloor(pos geometry.Point) bool {
+	return m.Contains(pos) && m.IsTileWalkable(pos) && !m.IsActorAt(pos) && !m.IsDownedActorAt(pos) && !m.IsItemAt(pos) &&  !m.IsObjectAt(pos) && m.IsSpecialAt(pos, SpecialTileNone)
+}
+
+func (m *GridMap[ActorType, ItemType, ObjectType]) GetFilteredAdjacentPositions(positions []geometry.Point, keep func(pos geometry.Point) bool) []geometry.Point {
+	results := make(map[geometry.Point]bool, 0)
+
+	for _, pos := range positions {
+		neighbors := m.NeighborsAll(pos, m.Contains)
+		for _, neighbor := range neighbors {
+			if keep(neighbor) {
+				results[neighbor] = true
+			}
+		}
+	}
+
+	result := make([]geometry.Point, len(results))
+	index := 0
+	for pos, _ := range results {
+		result[index] = pos
+		index++
+	}
+	return result
 }
 
 type JumpOverInfo struct {

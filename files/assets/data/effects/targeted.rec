@@ -3,7 +3,7 @@
 
 name: Steal Item
 internal_name: steal_item
-icon: 223
+icon: 245
 dlvl: 1
 targeting: melee
 hit_zone: target_only
@@ -11,7 +11,7 @@ effect: steal_item
 
 name: Mind Push
 internal_name: mind_push
-icon: 223
+icon: 213
 dlvl: 1
 targeting: direct
 hit_zone: target_only
@@ -19,7 +19,7 @@ effect: mind_push
 
 name: Fireball
 internal_name: fireball
-icon: 223
+icon: 109
 dlvl: 1
 targeting: ranged
 hit_zone: dijkstra_aoe(3)
@@ -27,7 +27,7 @@ effect: fireball
 
 name: Fire Ray
 internal_name: fire_ray
-icon: 223
+icon: 109
 dlvl: 1
 targeting: ranged
 hit_zone: ray_aoe(7)
@@ -35,7 +35,7 @@ effect: project_fire
 
 name: Fire Bresen
 internal_name: fire_bresen
-icon: 223
+icon: 109
 dlvl: 1
 targeting: ranged
 hit_zone: bresenham_aoe(7)
@@ -43,7 +43,7 @@ effect: project_fire
 
 name: Fire Wall
 internal_name: fire_wall
-icon: 223
+icon: 109
 dlvl: 1
 targeting: direct
 hit_zone: wall_aoe(5)
@@ -51,7 +51,7 @@ effect: project_fire
 
 name: Steal Item and Teleport
 internal_name: steal_item_vanish
-icon: 223
+icon: 215
 dlvl: 1
 targeting: melee
 hit_zone: target_only
@@ -59,7 +59,7 @@ effect: steal_item_teleport
 
 name: Blink
 internal_name: blink
-icon: 223
+icon: 39
 dlvl: 1
 targeting: direct
 hit_zone: target_only
@@ -67,7 +67,7 @@ effect: blink
 
 name: Confuse
 internal_name: confuse_target
-icon: 223
+icon: 41
 dlvl: 1
 targeting: direct
 hit_zone: target_only
@@ -75,7 +75,7 @@ effect: confuse
 
 name: Poison
 internal_name: poison_target
-icon: 223
+icon: 30
 dlvl: 1
 targeting: direct
 hit_zone: target_only
@@ -83,7 +83,7 @@ effect: poison
 
 name: Immobilize
 internal_name: immobilize_target
-icon: 223
+icon: 180
 dlvl: 1
 targeting: direct
 hit_zone: target_only
@@ -91,7 +91,7 @@ effect: immobilize
 
 name: Jump Start
 internal_name: jump_start
-icon: 223
+icon: 62
 dlvl: 1
 targeting: jumpstart(5 | 5)
 hit_zone: target_only
@@ -99,7 +99,7 @@ effect: jumpstart
 
 name: Earth Shaker
 internal_name: earth_shaker
-icon: 223
+icon: 35
 dlvl: 1
 targeting: earthshaker(5 | 5)
 hit_zone: neighbors_only(1)
@@ -107,8 +107,25 @@ effect: earthshaker
 
 name: Summon Monster
 internal_name: summon_monster
-icon: 223
+icon: 274
 dlvl: 1
 targeting: direct
 hit_zone: target_only
 effect: summon_monster
+
+name: Bridge Chasm
+internal_name: bridge_chasm
+icon: 63
+dlvl: 1
+targeting: ranged
+hit_zone: ray_aoe(7)
+effect: bridge_chasm
+
+name: Break Floor
+internal_name: break_floor
+icon: 265
+dlvl: 1
+targeting: ranged
+hit_zone: dijkstra_aoe(2)
+effect: break_floor
+

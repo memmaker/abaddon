@@ -9,4 +9,4 @@ fi
 
 
 
-recsel -C -e "armor_type = '${CATEGORY}'" -P internal_name ./assets/data/items/armor.rec
+recsel -C -e "armor_type = '${CATEGORY}'" -P internal_name ./files/assets/data/items/armor.rec

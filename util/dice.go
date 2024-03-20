@@ -90,12 +90,22 @@ func (r Dice) ExpectedValue() int {
         return r.Min()
     }
     // erwartungswert
-    sum := 0.0
+    totalExpectedValue := float64(r.dice) * r.expectedValueForOneDice() + float64(r.bonus)
+    return int(totalExpectedValue)
+}
+
+func (r Dice) expectedValueForOneDice() float64 {
+    // erwartungswert
+    sum := 1.0
     p := 1.0 / float64(r.sides)
     for i := 1; i < r.sides; i++ {
         sum += float64(i) * p
     }
-    return int(float64(r.dice)*sum) + r.bonus
+    return sum
+}
+
+func (r Dice) WithAddedDice(bonus int) Dice {
+    return NewDice(r.dice+bonus, r.sides, r.bonus)
 }
 
 func ParseDice(dice string) Dice {

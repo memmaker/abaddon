@@ -81,7 +81,7 @@ func (u *UIController) drawActors() {
 
 		if actor.IsHurt() {
 			percentage := actor.GetHurtTicksAsPercentage() // goes from 1.0 to 0.0
-			drawColor = util.LerpColor(defs.Red, enemyColor, percentage)
+			drawColor = util.LerpColor(enemyColor, defs.Red, percentage)
 		}
 		if u.configuration.ActorBobbingEnabled {
 			u.drawActorWithBobbingAnimation(actor, actorAtlas, drawColor)
@@ -172,17 +172,19 @@ func AsciiIconAndColor(t gridmap.Tile) (int32, color.RGBA) {
 	case gridmap.SpecialTileWater:
 		return int32('~'), defs.Blue
 	case gridmap.SpecialTileForest:
-		return int32(';'), defs.Brown
+		return int32(';'), defs.Green
 	case gridmap.SpecialTileMountain:
-		return int32('^'), defs.LightGray
+		return int32('^'), defs.Brown
 	case gridmap.SpecialTileVoid:
 		return int32(' '), defs.Black
 	case gridmap.SpecialTileStairsUp:
 		return int32('<'), defs.White
 	case gridmap.SpecialTileStairsDown:
 		return int32('>'), defs.White
-	case gridmap.SpecialTileDamaging:
+	case gridmap.SpecialTileLava:
 		return int32('~'), defs.Red
+	case gridmap.SpecialTileSpikes:
+		return int32('^'), defs.LightGray
 	}
 
 	if t.IsWalkable {
@@ -205,17 +207,19 @@ func CodePage437IconAndColor(t gridmap.Tile) (int32, color.RGBA) {
 	case gridmap.SpecialTileWater:
 		return int32(util.UnicodeToCP437Byte('≈')), defs.Blue
 	case gridmap.SpecialTileForest:
-		return int32(util.UnicodeToCP437Byte('♣')), defs.Brown
+		return int32(util.UnicodeToCP437Byte('♣')), defs.Green
 	case gridmap.SpecialTileMountain:
-		return int32(util.UnicodeToCP437Byte('∩')), defs.LightGray
+		return int32(util.UnicodeToCP437Byte('∩')), defs.Brown
 	case gridmap.SpecialTileVoid:
 		return int32(util.UnicodeToCP437Byte(' ')), defs.Black
 	case gridmap.SpecialTileStairsUp:
 		return int32(util.UnicodeToCP437Byte('≡')), defs.White
 	case gridmap.SpecialTileStairsDown:
 		return int32(util.UnicodeToCP437Byte('≡')), defs.Cyan
-	case gridmap.SpecialTileDamaging:
+	case gridmap.SpecialTileLava:
 		return int32(util.UnicodeToCP437Byte('≈')), defs.Red
+	case gridmap.SpecialTileSpikes:
+		return int32(util.UnicodeToCP437Byte('^')), defs.LightGray
 	}
 
 	if t.IsWalkable {

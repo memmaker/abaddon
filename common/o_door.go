@@ -26,6 +26,10 @@ func (d *Door) ActorBumpedInto(actor *Actor, startAnimating func() bool) {
 
 }
 
+func (d *Door) IsConductor() bool {
+	return false
+}
+
 func (d *Door) MapPosition() geometry.Point {
 	return d.position
 }
@@ -36,7 +40,9 @@ func (d *Door) Icon(tick uint64) int32 {
 	}
 	return d.closedIcon
 }
-
+func (d *Door) DamageReceived(damage int) {
+	d.isOpen = true
+}
 func (d *Door) SetMapPosition(point geometry.Point) {
 	d.position = point
 }

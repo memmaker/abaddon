@@ -45,7 +45,8 @@ func (d OnMoveHook) After(action Action, context ActionContext) []Action {
 	newPos := moveAction.GetNewPos()
 	currentMap := state.GetMap()
 
-	actions = append(actions, TriggerCellEffectsDuringMovementForActor(state, action, actor, newPos, AnimateNow())...)
+	followUp, _ := TriggerCellEffectsDuringMovementForActor(state, action, actor, newPos, AnimateNow())
+	actions = append(actions, followUp...)
 
 	if actor != state.GetPlayer() {
 		actions = append(actions, NewUpdateFoVAction(action.Cause(), actor))

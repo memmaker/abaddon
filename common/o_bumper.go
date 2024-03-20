@@ -11,6 +11,14 @@ type BumpObject struct {
 	name       string
 }
 
+func (d *BumpObject) IsConductor() bool {
+	return false
+}
+
+func (d *BumpObject) DamageReceived(amount int) {
+
+}
+
 func (d *BumpObject) Name() string {
 	return d.name
 }

@@ -16,14 +16,13 @@ mkdir builds/linux
 # CC - Set this to the cross-compiler for the target OS
 # CGO_ENABLED=1 - Enable CGO for cross-compilation
 
-GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags '-s -w' -o ./builds/mac/LuxAeterna -tags ebitensinglethread -tags embedded .
+GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags '-s -w' -o ./builds/mac/ -tags ebitensinglethread -tags embedded .
 
 # Windows Include Files are here: /usr/local/Cellar/mingw-w64/11.0.1/toolchain-x86_64/x86_64-w64-mingw32/include
 # Could be injected like this: -ldflags="-Ipath/to/headerfile -Lpath/to/lib"
 # But seems to work without this for now..
-CC=/usr/local/Cellar/mingw-w64/11.0.1/toolchain-x86_64/bin/x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags '-s -w' -o ./builds/win/LuxAeterna.exe -tags ebitensinglethread  -tags embedded .
+CC=/usr/local/Cellar/mingw-w64/11.0.1/toolchain-x86_64/bin/x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags '-s -w' -o ./builds/win/Abaddon-Embedded.exe -tags ebitensinglethread  -tags embedded .
 
-./build_linux_embedded.sh
 
 # We should now have the following files:
 # - builds/mac/LuxAeterna
@@ -34,9 +33,6 @@ CC=/usr/local/Cellar/mingw-w64/11.0.1/toolchain-x86_64/bin/x86_64-w64-mingw32-gc
 cp exclude/RogueWindows/rw-windows-amd64.exe builds/win/RogueWindows.exe
 cp exclude/RogueWindows/*.cmd builds/win
 
-cp exclude/RogueWindows/rw-linux-amd64 builds/linux/RogueWindows
-cp exclude/RogueWindows/Stats exclude/RogueWindows/Log exclude/RogueWindows/Inventory exclude/RogueWindows/Equipment builds/linux
-
 cp exclude/RogueWindows/rw-darwin-amd64 builds/mac/RogueWindows
 cp exclude/RogueWindows/Stats exclude/RogueWindows/Log exclude/RogueWindows/Inventory exclude/RogueWindows/Equipment builds/mac
 
@@ -45,10 +41,9 @@ cp exclude/RogueWindows/Stats exclude/RogueWindows/Log exclude/RogueWindows/Inve
 cd builds || exit
 mv mac LuxAeterna-MacOSX
 mv win LuxAeterna-Windows
-mv linux LuxAeterna-Linux
+
 zip -r la-macos-amd64.zip LuxAeterna-MacOSX
 zip -r la-windows-amd64.zip LuxAeterna-Windows
-zip -r la-linux-amd64.zip LuxAeterna-Linux
 cd ..
 
 mv builds builds_embedded

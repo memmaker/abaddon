@@ -84,6 +84,8 @@ const (
 	IconMountain                 int32 = 7
 	IconMountainWithEntrance     int32 = 8
 	IconWater                    int32 = 28
+	IconSpikes                   int32 = 264
+	IconLava                     int32 = 159
 	IconWoodenBridge             int32 = 63
 	IconTreeDark                 int32 = 5
 	IconTreeLight                int32 = 4
@@ -98,6 +100,7 @@ const (
 	IconDungeonOfDoomCorridorWall  int32 = 243
 	IconDungeonOfDoomCorridorFloor int32 = 268
 
+	IconChasm                    int32 = 265
 	IconCathedralFloor           int32 = 64
 	IconCatacombsFloor           int32 = 86
 	IconCatacombsWall            int32 = 84
@@ -122,6 +125,7 @@ const (
 	IconEffectLightning     int32 = 37
 	IconEffectFireSmall     int32 = 109
 	IconEffectFireBig       int32 = 32
+	IconBarrel              int32 = 125
 	IconEffectHit           int32 = 43
 	IconItemPotionCrimson   int32 = 161
 	IconItemPotionRed       int32 = 332

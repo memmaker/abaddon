@@ -39,13 +39,15 @@ func (s *State) NewGridMapFromLDTK(mapName string) (*gridmap.GridMap[*Actor, *It
 		posX, posY := npcLayer.ToGridPosition(entity.Position[0], entity.Position[1])
 		pos := geometry.Point{X: posX, Y: posY}
 		if typeOfEntity == "NPC" {
-			addActorFromEntity(ldtkMapProject, loadedMap, entity, pos)
+			s.addActorFromEntity(ldtkMapProject, loadedMap, entity, pos)
 		} else if typeOfEntity == "Sign" {
 			signText := entity.PropertyByIdentifier("Text").AsString()
 			textLines := strings.Split(signText, "\n")
 			s.addSignFromEntity(loadedMap, textLines, pos)
 		} else if typeOfEntity == "Door" {
 			loadedMap.AddObject(NewDoor(defs.IconOpenDoor, defs.IconClosedDoor), pos)
+		} else if typeOfEntity == "Barrel" {
+			loadedMap.AddObject(s.factory.NewBarrel(), pos)
 		}
 
 	}
@@ -59,7 +61,18 @@ func (s *State) addSignFromEntity(loadedMap *gridmap.GridMap[*Actor, *Item, Obje
 	loadedMap.AddObject(sign, pos)
 }
 
-func addActorFromEntity(ldtkMapProject *ldtk.Project, loadedMap *gridmap.GridMap[*Actor, *Item, Object], entity *ldtk.Entity, pos geometry.Point) {
+func  (s *State) addActorFromEntity(ldtkMapProject *ldtk.Project, loadedMap *gridmap.GridMap[*Actor, *Item, Object], entity *ldtk.Entity, pos geometry.Point) {
+	var newActor *Actor
+	if !entity.PropertyByIdentifier("UniqueName").IsNull() {
+		uniqueName := entity.PropertyByIdentifier("UniqueName").AsString()
+		newActor = s.factory.NewUniqueEnemyFromName(uniqueName)
+	} else {
+		newActor = actorFromEntity(ldtkMapProject, entity, pos)
+	}
+	loadedMap.AddActor(newActor, pos)
+}
+
+func actorFromEntity(ldtkMapProject *ldtk.Project, entity *ldtk.Entity, pos geometry.Point) *Actor {
 	icon, _ := resolveLDTKIcon(ldtkMapProject, entity.PropertyByIdentifier("Tile"))
 
 	flipLook := entity.PropertyByIdentifier("FlipLookDirection").AsBool()
@@ -84,18 +97,18 @@ func addActorFromEntity(ldtkMapProject *ldtk.Project, loadedMap *gridmap.GridMap
 	npcTypeProp := entity.PropertyByIdentifier("Type").AsString()
 	if strings.HasPrefix(npcTypeProp, "Store") {
 		actor.SetVendorType(VendorType(strings.ToLower(npcTypeProp)))
+		actor.SetFaction(defs.FactionNeutral)
 		actor.SetNoCorpse()
 		actor.SetDeathStringFormats([]string{
 			"%s teleported away at the last second.",
 		})
 	} else if strings.HasPrefix(npcTypeProp, "Neutral") {
-		actor.SetNeutral()
+		actor.SetNeutralFaction()
 	} else if strings.HasPrefix(npcTypeProp, "Aggressive") {
-		actor.SetHostile()
+		actor.SetMonsterFaction()
 	}
-
-	loadedMap.AddActor(actor, pos)
 	actor.SetFlipLook(flipLook)
+	return actor
 }
 
 func resolveLDTKIcon(ldtkMapProject *ldtk.Project, prop *ldtk.Property) (int32, ldtk.EnumSet) {

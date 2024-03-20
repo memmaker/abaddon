@@ -8,11 +8,20 @@ import (
 	"strings"
 )
 
+type Faction int
+
+const (
+	FactionNeutral Faction = iota
+	FactionPlayer
+	FactionMonsters
+	FactionLoneWolf
+)
+
 type ActorSpeechTrigger int
 
 const (
 	SpeechTriggerSight ActorSpeechTrigger = iota
-	SpeechTriggerHurt
+	SpeechTriggerHurtInTown
 )
 
 type EnemyDefinition struct {
@@ -150,6 +159,7 @@ const (
 	TagUndead
 	TagUnique
 	TagNoCorpse
+	TagWinCondition
 )
 //IsUnique    bool
 //	HasNoCorpse bool
@@ -167,6 +177,8 @@ func EnemyTagsFromString(tags string) EnemyTags {
 			result |= TagUnique
 		case "no_corpse":
 			result |= TagNoCorpse
+		case "win_condition":
+			result |= TagWinCondition
 		}
 	}
 	return result

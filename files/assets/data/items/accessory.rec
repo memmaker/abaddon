@@ -1,13 +1,6 @@
 %rec: default
 #FIELDS: name internal_name icon dlvl cost charges max_level out_of_depth_chance min_level_for_ood category armor_type armor_class weapon_type weapon_damage weapon_speed ranged_max_range ranged_accuracy_at_min_range ranged_accuracy_at_max_range ranged_projectile_icon throw_hit_zone throw_damage throw_chance_to_break throw_on_hit_effect light_color light_flicker_pattern light_flicker_frame_delay equip_modifier untargeted_action targeted_action
 
-name: Amulet of Adornment
-internal_name: amulet_of_adornment
-icon: 132
-dlvl: 1
-cost: 100
-category: amulet
-
 name: Ring of Protection
 internal_name: ring_of_protection
 icon: 129
@@ -16,41 +9,9 @@ cost: 100
 category: ring
 equip_modifier: armor_class
 
-name: Ring of Damage
-internal_name: ring_of_damage
-icon: 130
-dlvl: 1
-cost: 100
-category: ring
-equip_modifier: damage
-
-name: Ring of Strength
-internal_name: ring_of_strength
-icon: 131
-dlvl: 1
-cost: 100
-category: ring
-equip_modifier: strength
-
-name: Ring of Dexterity
-internal_name: ring_of_dexterity
-icon: 132
-dlvl: 1
-cost: 100
-category: ring
-equip_modifier: dexterity
-
-name: Ring of Intelligence
-internal_name: ring_of_intelligence
-icon: 133
-dlvl: 1
-cost: 100
-category: ring
-equip_modifier: intelligence
-
 name: Ring of Running
 internal_name: ring_of_running
-icon: 134
+icon: 129
 dlvl: 1
 cost: 100
 category: ring
@@ -58,7 +19,7 @@ equip_modifier: move_speed
 
 name: Ring of Fury
 internal_name: ring_of_fury
-icon: 134
+icon: 129
 dlvl: 1
 cost: 100
 category: ring
@@ -66,7 +27,7 @@ equip_modifier: attack_speed
 
 name: Ring of Speed
 internal_name: ring_of_speed
-icon: 134
+icon: 129
 dlvl: 1
 cost: 100
 category: ring

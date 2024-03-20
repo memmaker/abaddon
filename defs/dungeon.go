@@ -272,53 +272,23 @@ func getPoisonedWaterSupplyLevelDefinition(source *rand.Rand) LevelDefinition {
 }
 
 func GetLevelDefinition(randomSource *rand.Rand, dungeonLevel int) LevelDefinition {
+	//Hell Town -> Dungeons of Doom -> Caves -> Crypt -> Cathedral Town
 	getTransitionsForLevel := map[int][]TransitionDef{
-		3: {
-
+		1: {
 			{
-				LocationName: "to_poisoned_water_supply",
-				Target: gridmap.Transition{
-					TargetMap:      string(SpecialLevelPoisonedWaterSupply),
-					TargetLocation: "from_catacombs",
-				},
-				IsUp: true,
-			},
-		},
-		4: {
-			{
-				LocationName: "to_town",
-				Target: gridmap.Transition{
-					TargetMap:      string(LevelNameTown),
-					TargetLocation: "to_catacombs",
-				},
-				IsUp: true,
-			},
-		},
-		6: {
-			{
-				LocationName: "to_town",
-				Target: gridmap.Transition{
-					TargetMap:      string(LevelNameTown),
-					TargetLocation: "to_caves",
-				},
-				IsUp: true,
-			},
-		},
-		8: {
-			{
-				LocationName: "to_hell_town",
+				LocationName: "ladder_down",
 				Target: gridmap.Transition{
 					TargetMap:      string(LevelNameTownHell),
-					TargetLocation: "to_caves",
+					TargetLocation: "to_dungeon",
 				},
-				IsUp: true,
+				IsUp: false,
 			},
 		},
-		9: {
+		5: {
 			{
-				LocationName: "to_hell_town",
+				LocationName: "ladder_up",
 				Target: gridmap.Transition{
-					TargetMap:      string(LevelNameTownHell),
+					TargetMap:      string(LevelNameTown),
 					TargetLocation: "to_dungeon",
 				},
 				IsUp: true,
@@ -326,65 +296,59 @@ func GetLevelDefinition(randomSource *rand.Rand, dungeonLevel int) LevelDefiniti
 		},
 	}
 	getRequiredRoomsForLevel := map[int][]string{
+		1: {
+			"Hell_template_for_lucifer",
+		},
 		2: {
-			"Cath_template_for_meat_jack",
+			"Dung_template_for_rogue",
 		},
 		4: {
 			"Cata_template_for_king_zedek",
 		},
-		8: {
-			"Hell_template_for_lucifer",
-		},
-		10: {
-			"Dung_template_for_rogue",
+		5: {
+			"Cath_template_for_meat_jack",
 		},
 	}
 	getTemplatePrefixForLevel := func(level int) string {
-		if level >= 1 && level <= 2 {
-			return "Cath"
-		} else if level >= 3 && level <= 4 {
-			return "Cata"
-		} else if level >= 5 && level <= 6 {
-			return "Cave"
-		} else if level >= 7 && level <= 8 {
+		if level == 1  {
 			return "Hell"
-		} else if level >= 9 && level <= 10 {
+		} else if level == 2 {
 			return "Dung" //return "Dung"
-		} else if level >= 11 && level <= 12 {
-			return "Cath" //return "Merc"
+		} else if level == 3 {
+			return "Cave"
+		} else if level == 4 {
+			return "Cata"
+		} else if level == 5 {
+			return "Cath"
 		}
 		return "Cath"
 	}
 	getLevelName := func(level int) string {
-		if level >= 1 && level <= 2 {
-			return fmt.Sprintf("Level %d\nCathedral", level)
-		} else if level >= 3 && level <= 4 {
-			return fmt.Sprintf("Level %d\nCatacombs", level)
-		} else if level >= 5 && level <= 6 {
-			return fmt.Sprintf("Level %d\nCaves", level)
-		} else if level >= 7 && level <= 8 {
+		if level == 1 {
 			return fmt.Sprintf("Level %d\nHell", level)
-		} else if level >= 9 && level <= 10 {
+		} else if level == 2 {
 			return fmt.Sprintf("Level %d\nDungeon of Doom", level)
-		} else if level >= 11 && level <= 12 {
-			return fmt.Sprintf("Level %d\nMerchant District", level)
+		} else if level == 3 {
+			return fmt.Sprintf("Level %d\nCaves", level)
+		} else if level == 4 {
+			return fmt.Sprintf("Level %d\nCatacombs", level)
+		} else if level == 5 {
+			return fmt.Sprintf("Level %d\nCathedral", level)
+		} else if level == 6 {
+			return fmt.Sprintf("Level %d\nTown", level)
 		}
 		return fmt.Sprintf("Void Level %d", level)
 	}
 	getTilemapForLevel := func(layout *dungen.DungeonMap, level int) BasicTileMapping {
-		if level >= 1 && level <= 2 {
-			return getCathedralTilemap(randomSource, layout)
-		} else if level >= 3 && level <= 4 {
-			return getCatacombsTilemap(randomSource, layout)
-		} else if level >= 5 && level <= 6 {
-			return getCavesTilemap(randomSource, layout)
-		} else if level >= 7 && level <= 8 {
+		if level == 1 {
 			return getHellTilemap(randomSource, layout)
-		} else if level == 9 {
+		} else if level == 2 {
 			return getDungeonOfDoomTilemap(randomSource, layout)
-		} else if level == 10 {
-			return getModernDungeonOfDoomTilemap(randomSource, layout)
-		} else if level >= 11 && level <= 12 {
+		} else if level == 3 {
+			return getCavesTilemap(randomSource, layout)
+		} else if level == 4 {
+			return getCatacombsTilemap(randomSource, layout)
+		} else if level == 5 {
 			return getCathedralTilemap(randomSource, layout)
 		}
 		return getCathedralTilemap(randomSource, layout)
@@ -392,7 +356,7 @@ func GetLevelDefinition(randomSource *rand.Rand, dungeonLevel int) LevelDefiniti
 	rules := dungen.NewTemplateRules(getRequiredRoomsForLevel, dungeonLevel, getTemplatePrefixForLevel(dungeonLevel)).
 		WithForbidden("Cave_template_for_poisoned_water")
 
-	if dungeonLevel >= 5 && dungeonLevel <= 8 {
+	if dungeonLevel == 1 || dungeonLevel == 3 {
 		rules = rules.WithNoDoors()
 	}
 	levelDef := LevelDefinition{

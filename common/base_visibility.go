@@ -31,10 +31,10 @@ func (v *Visibility) RemoveActor(victim *Actor) {
 	delete(v.visibleActors, victim)
 }
 
-func (v *Visibility) GetVisibleEnemies() []*Actor {
+func (v *Visibility) GetVisibleEnemies(player *Actor) []*Actor {
 	enemies := make([]*Actor, 0)
 	for actor, _ := range v.visibleActors {
-		if actor.IsHostile() {
+		if actor.IsHostileTo(player) {
 			enemies = append(enemies, actor)
 		}
 	}

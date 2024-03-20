@@ -26,7 +26,6 @@ type ItemDefinition struct {
 	Armor             ArmorDefinition
 	Weapon            WeaponDefinition
 	Throw             ThrowDefinition
-	Light             LightDefinition
 	Cost              int
 	Modifiers         []string
 
@@ -90,12 +89,6 @@ func NewItemDefinitionFromRecord(record recfile.Record) ItemDefinition {
 			itemDefinition.Throw.ChanceToBreak = field.AsFloat()
 		case "throw_on_hit_effect":
 			itemDefinition.Throw.OnHitEffect = field.Value
-		case "light_color":
-			itemDefinition.Light.LightColor = field.Value
-		case "light_flicker_pattern":
-			itemDefinition.Light.FlickerPattern = field.Value
-		case "light_flicker_frame_delay":
-			itemDefinition.Light.FlickerFrameDelay = field.AsFloat()
 		case "equip_modifier":
 			itemDefinition.Modifiers = append(itemDefinition.Modifiers, field.Value)
 		case "untargeted_action":
@@ -130,10 +123,6 @@ func (d ItemDefinition) IsWeapon() bool {
 
 func (d ItemDefinition) IsThrow() bool {
 	return d.Throw.IsValid()
-}
-
-func (d ItemDefinition) IsLightSource() bool {
-	return d.Light.IsValid()
 }
 
 func (d ItemDefinition) IsPotion() bool {

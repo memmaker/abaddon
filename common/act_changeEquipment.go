@@ -6,9 +6,10 @@ import (
 
 type ChangeEquipmentAction struct {
 	BaseAction
-	actor *Actor
-	mode  EquipmentChangeMode
-	item  *Item
+	actor   *Actor
+	mode    EquipmentChangeMode
+	item    *Item
+	noSound bool
 }
 
 type EquipmentChangeMode bool
@@ -58,6 +59,7 @@ func (d *ChangeEquipmentAction) Execute(context ActionContext) []Action {
 			verb = "equip"
 		}
 		message = fmt.Sprintf("%s %s %s", name, verb, item.Name())
+		if !d.noSound  {context.AudioPlayer.PlayCue("item_equip")}
 	} else if d.mode == EquipmentChangeModeUnequip {
 		equipment.UnEquip(item)
 
@@ -68,9 +70,12 @@ func (d *ChangeEquipmentAction) Execute(context ActionContext) []Action {
 			verb = "unequip"
 		}
 		message = fmt.Sprintf("%s %s %s", name, verb, item.Name())
+		if !d.noSound  {context.AudioPlayer.PlayCue("item_unequip")}
 	}
 
-	context.Msg(message)
+	if context.GameState.GetPlayer() == actor {
+		context.Msg(message)
+	}
 
 	return nil
 }
@@ -89,4 +94,8 @@ func (d *ChangeEquipmentAction) GetItem() *Item {
 
 func (d *ChangeEquipmentAction) GetActor() *Actor {
 	return d.actor
+}
+
+func (d *ChangeEquipmentAction) NoSound() {
+	d.noSound = true
 }

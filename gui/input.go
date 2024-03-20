@@ -4,7 +4,9 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"image/color"
+	"rpg/defs"
 	"rpg/geometry"
+	"rpg/gridmap"
 )
 
 type InputReceiver interface {
@@ -70,13 +72,24 @@ func (u *UIController) handleKeyboardInput() {
 	//  - quick travel
 
 	act := u.context.PlayerAction()
-
+	state := u.context.GameState()
 	u.shiftIsBeingPressedThisTick = ebiten.IsKeyPressed(ebiten.KeyShift)
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
 		u.showHelpText()
 		return
 	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyF2) {
+		u.showHorseHelpText()
+		return
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyF3) {
+		u.Show7DRLQuest()
+		return
+	}
+
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		u.Cancel()
 		return
@@ -122,8 +135,11 @@ func (u *UIController) handleKeyboardInput() {
 			act.AimedRangedAttack()
 		}
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyV) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyT) {
 		act.AimedThrow()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyE) {
+		act.UseItem()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyQ) {
 		act.QuickRangedAttack()
@@ -132,21 +148,13 @@ func (u *UIController) handleKeyboardInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyL) {
 		u.ShowLog()
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
-		u.showJournal()
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyZ) {
-		act.RestUntilHealed()
-	}
+
 	if inpututil.IsKeyJustPressed(ebiten.KeyX) {
-		u.mapRenderer.CenterOnFloat(u.context.GameState().GetPlayer().DrawPosition())
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyB) {
-		u.showFlags()
+		u.mapRenderer.CenterOnFloat(state.GetPlayer().DrawPosition())
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyPeriod) {
-		act.EndTurn(10)
+		act.WaitOneTurn()
 		//g.actionBroker.Execute(actions.NewEndPlayerTurnAction(actions.NewActorCause("Wait", g.state.GetPlayer()), 10))
 	}
 
@@ -157,10 +165,10 @@ func (u *UIController) handleKeyboardInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
 		u.ShowFullStats()
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyP) && u.shiftIsBeingPressedThisTick {
 		u.context.DebugActions().KillLevel()
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyH) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyH) && u.shiftIsBeingPressedThisTick  {
 		u.context.DebugActions().GotoHellTown()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF8) {
@@ -168,36 +176,58 @@ func (u *UIController) handleKeyboardInput() {
 		u.configuration.FlipActorsHorizontally = u.renderingMode == GraphicRendering
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF9) {
-		u.disableFogOfWar = !u.disableFogOfWar
+		//u.disableFogOfWar = !u.disableFogOfWar
+		u.ShowGameOverMenu()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF10) {
-		u.context.DebugActions().OpenDebugMenu()
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyF11) {
 		u.isFullScreen = !ebiten.IsFullscreen()
 		ebiten.SetFullscreen(u.isFullScreen)
 		u.OnScreenSizeChanged()
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyF12) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyF11) && u.shiftIsBeingPressedThisTick {
+		u.context.DebugActions().OpenDebugMenu()
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyF12)  && u.shiftIsBeingPressedThisTick {
 		u.FlashScreen(color.White, 0.1)
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyT) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
 		//g.actionBroker.Execute(common.NewEndPlayerTurnAction(common.AbstractCause("Travel"), 10))
+		act.MountToggle()
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyU) {
-		/*
-			level := g.getCurrentDungeonLevel()
-			g.transitionTo(gridmap.Transition{
+	if inpututil.IsKeyJustPressed(ebiten.KeyU) && u.shiftIsBeingPressedThisTick {
+		level := state.GetCurrentDungeonLevel()
+		if level < 5 {
+			state.TransitionTo(gridmap.Transition{
 				TargetMap:      defs.LevelNameFromDepth(level + 1),
+				TargetLocation: "ladder_down",
+			})
+			u.context.PlayerAction().EndTurn(10)
+		} else if level == 5 {
+			state.TransitionTo(gridmap.Transition{
+				TargetMap: string(defs.LevelNameTown),
+				TargetLocation: "to_dungeon",
+			})
+		}
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyY) && u.shiftIsBeingPressedThisTick {
+		level := state.GetCurrentDungeonLevel()
+		if level > 1 {
+			state.TransitionTo(gridmap.Transition{
+				TargetMap:      defs.LevelNameFromDepth(level - 1),
 				TargetLocation: "ladder_up",
 			})
-			g.actionBroker.Execute(common.NewEndPlayerTurnAction(common.AbstractCause("Travel"), 10))
-
-		*/
+			u.context.PlayerAction().EndTurn(10)
+		} else if level == 1 {
+			state.TransitionTo(gridmap.Transition{
+				TargetMap: string(defs.LevelNameTownHell),
+				TargetLocation: "to_dungeon",
+			})
+		}
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyO) {
@@ -231,22 +261,36 @@ func (u *UIController) handleKeyboardInput() {
 		u.mapRenderer.ScrollBy(geometry.Point{X: 0, Y: 8})
 	}
 
-	if isBeingPressedRepeatedly(ebiten.KeyW) {
+	if isBeingPressedRepeatedly(ebiten.KeyW) || isBeingPressedRepeatedly(ebiten.KeyNumpad8) {
 		act.ManualMovePlayer(geometry.Point{X: 0, Y: -1})
-	} else if isBeingPressedRepeatedly(ebiten.KeyS) {
+	} else if isBeingPressedRepeatedly(ebiten.KeyS) || isBeingPressedRepeatedly(ebiten.KeyNumpad2) {
 		act.ManualMovePlayer(geometry.Point{X: 0, Y: 1})
-	} else if isBeingPressedRepeatedly(ebiten.KeyA) {
+	} else if isBeingPressedRepeatedly(ebiten.KeyA) || isBeingPressedRepeatedly(ebiten.KeyNumpad4) {
 		act.ManualMovePlayer(geometry.Point{X: -1, Y: 0})
-	} else if isBeingPressedRepeatedly(ebiten.KeyD) {
+	} else if isBeingPressedRepeatedly(ebiten.KeyD) || isBeingPressedRepeatedly(ebiten.KeyNumpad6) {
 		act.ManualMovePlayer(geometry.Point{X: 1, Y: 0})
+	} else if isBeingPressedRepeatedly(ebiten.KeyNumpad7) {
+		act.ManualMovePlayer(geometry.Point{X: -1, Y: -1})
+	} else if isBeingPressedRepeatedly(ebiten.KeyNumpad9) {
+		act.ManualMovePlayer(geometry.Point{X: 1, Y: -1})
+	} else if isBeingPressedRepeatedly(ebiten.KeyNumpad1) {
+		act.ManualMovePlayer(geometry.Point{X: -1, Y: 1})
+	} else if isBeingPressedRepeatedly(ebiten.KeyNumpad3) {
+		act.ManualMovePlayer(geometry.Point{X: 1, Y: 1})
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
+
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
+		u.ChangeMapZoom(-1)
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF5) {
 		u.ChangeMapZoom(1)
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyN) {
-		u.ChangeMapZoom(-1)
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyF6) && u.shiftIsBeingPressedThisTick {
+		u.Show7DRLQuestSpoiler()
 	}
 }
 

@@ -2,7 +2,6 @@ package common
 
 import (
 	"image/color"
-
 	"rpg/geometry"
 	"rpg/util"
 )
@@ -18,6 +17,10 @@ type HitAnimation struct {
 	ticksAlive       uint64
 	ticksNeeded      uint64
 	onFinished       func()
+}
+
+func (m *HitAnimation) AudioCue() string {
+	return ""
 }
 
 func NewHitAnimation(targetPos geometry.Point, runtimeInSeconds float64, startFrame int32, frameCount int) *HitAnimation {

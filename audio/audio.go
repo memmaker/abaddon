@@ -1,9 +1,10 @@
 package audio
 
 import (
-	"fmt"
+	"io"
 	"io/fs"
 	"math/rand"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -114,9 +115,14 @@ func (s *Sound) IsLoaded() bool {
 
 func (s *Sound) Load(ap *Player) bool {
 	for i, filename := range s.Filenames {
-		print(fmt.Sprintf("Loading %s...", filename))
-		s.Samples[i] = ap.LoadOGG(filename)
-		println("done")
+		//print(fmt.Sprintf("Loading %s...", filename))
+		oggData, success := ap.LoadOGG(filename)
+		if !success {
+			println("ERR: Could not load sound file: " + filename)
+			return false
+		}
+		s.Samples[i] = oggData
+		//println("done")
 	}
 	if !s.IsLoaded() {
 		println("ERR: Sound cue not found: " + s.Cue)
@@ -169,7 +175,7 @@ func NewAudioPlayer(fileSystem fs.ReadDirFS, sampleRate SampleRate) *Player {
 		context:         audio.NewContext(int(sampleRate)),
 		availableSounds: make(map[string]*Sound),
 		activeSounds:    make(map[string][]*ActiveSound),
-		sfxVolume:       1,
+		sfxVolume:       0.2,
 		loopVolume:      1,
 		masterVolume:    1,
 	}
@@ -191,21 +197,34 @@ func (ap *Player) StopAll() {
 }
 
 // LoadOGG loads an OGG file from the given filename into memory.
-func (ap *Player) LoadOGG(filename string) []byte {
+func (ap *Player) LoadOGG(filename string) ([]byte, bool) {
 	file, filErr := ap.files.Open(filename)
+	if filErr != nil {
+		return nil, false
+	}
 	defer file.Close()
 	stream, decodeErr := vorbis.DecodeWithoutResampling(file)
 	if decodeErr != nil || filErr != nil {
-		return nil
+		return nil, false
+	}
+	_, SeekErr := stream.Seek(0, io.SeekStart)
+	if SeekErr != nil {
+		return nil, false
 	}
 	buffer := make([]byte, stream.Length())
-	stream.Read(buffer)
-	return buffer
+	_, err := stream.Read(buffer)
+	if err != nil {
+		return nil, false
+	}
+	return buffer, true
 }
 
 // OpenOGG opens an OGG file from the given filename for streaming.
 func (ap *Player) OpenOGG(filename string) *audio.Player {
 	file, filErr := ap.files.Open(filename)
+	if filErr != nil {
+		return nil
+	}
 	defer file.Close()
 	stream, decodeErr := vorbis.DecodeWithoutResampling(file)
 	if decodeErr != nil || filErr != nil {
@@ -255,6 +274,9 @@ func (ap *Player) StartLoopStream(cue string) Handle {
 	if sound, ok := ap.availableSounds[cue]; ok {
 		sound.IsLooping = true
 		player := sound.OpenStream(ap)
+		if player == nil {
+			return &NullHandle{}
+		}
 		player.Rewind()
 		player.SetVolume(ap.effectiveMusicVolume())
 		player.Play()
@@ -303,6 +325,15 @@ func (ap *Player) PlayCueWhenFree(cue string) {
 		ap.PlayCue(cue)
 	}
 	ap.queuedSounds = append(ap.queuedSounds, cue)
+}
+
+func (ap *Player) PlayCueIfFree(cue string) {
+	if ap.disablePlayback {
+		return
+	}
+	if !ap.IsSoundEffectPlaying() {
+		ap.PlayCue(cue)
+	}
 }
 
 func (ap *Player) PlayCueWithCallback(cue string, callback func()) Handle {
@@ -382,7 +413,7 @@ func (ap *Player) PreLoadCuesIntoMemory(soundCues []string) {
 	for _, soundCue := range soundCues {
 		if sound, ok := ap.availableSounds[soundCue]; ok {
 			if !sound.IsLoaded() {
-				println(fmt.Sprintf("Loading sound cue '%s'", soundCue))
+				//println(fmt.Sprintf("Loading sound cue '%s'", soundCue))
 				sound.Load(ap)
 			}
 		}
@@ -392,7 +423,7 @@ func (ap *Player) UnloadCues(soundCues []string) {
 	for _, soundCue := range soundCues {
 		if sound, ok := ap.availableSounds[soundCue]; ok {
 			if sound.IsLoaded() {
-				println(fmt.Sprintf("Unloading sound cue '%s'", soundCue))
+				//println(fmt.Sprintf("Unloading sound cue '%s'", soundCue))
 				sound.Unload()
 			}
 		}
@@ -408,7 +439,7 @@ func (ap *Player) RegisterRandomizedSoundCues(directories []string) {
 			if !strings.HasSuffix(filename, ".ogg") {
 				continue
 			}
-			fileNames = append(fileNames, filepath.Join(directory, filename))
+			fileNames = append(fileNames, path.Join(directory, filename))
 		}
 		s := &Sound{
 			Cue:          cue,

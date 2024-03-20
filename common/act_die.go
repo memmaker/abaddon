@@ -26,6 +26,7 @@ func (d *DieAction) Execute(context ActionContext) []Action {
 	msg := context.Msg
 	actor := d.actor
 	ui := context.UserInterface()
+	var actions []Action
 	if actor == state.GetPlayer() {
 		msg(fmt.Sprintf("You die. CoD: %s", d.cause.ToString()))
 		ui.ShowGameOverMenu()
@@ -35,11 +36,16 @@ func (d *DieAction) Execute(context ActionContext) []Action {
 			corpsePos := d.getCorpsePos(gameMap, actor.MapPosition())
 			gameMap.AddDownedActor(actor, corpsePos) // write state
 		}
+		if actor.HasStatusEffect(StatusExplodeOnDeath) {
+			explosion := NewExplosionAction(d.cause, actor.MapPosition(), 1, 1, 3)
+			explosion.SetGory()
+			actions = append(actions, explosion)
+		}
 		msg(fmt.Sprintf(actor.GetDeathStringFormat(), actor.Name()))
 		//engine.UpdateMiniMap()
 	}
 
-	return nil
+	return actions
 }
 func (d *DieAction) getCorpsePos(gameMap *gridmap.GridMap[*Actor, *Item, Object], actorPos geometry.Point) geometry.Point {
 	isFree := func(pos geometry.Point) bool {

@@ -1,8 +1,6 @@
 package common
 
 import (
-	"fmt"
-	"rpg/stats"
 	"rpg/util"
 )
 
@@ -21,16 +19,8 @@ func NewTalkToAction(source Cause, npc *Actor) *TalkToAction {
 	}
 }
 func (d *TalkToAction) Execute(context ActionContext) []Action {
-	state := context.GameState
 	gui := context.UserInterface()
 	npc := d.npc
-	vendorType := npc.GetVendorType()
-	msg := context.Msg
-
-	if vendorType == VendorTypeWands {
-		state.GetPlayer().HealCompletely()
-		msg(fmt.Sprintf("You feel refreshed"))
-	}
 
 	options := getVendorOptions(context, npc)
 	if len(options) == 0 {
@@ -63,7 +53,6 @@ func getVendorOptions(context ActionContext, vendor *Actor) []util.MenuItem {
 }
 func getWandVendorOptions(context ActionContext, vendor *Actor) []util.MenuItem {
 	gui := context.UserInterface()
-	state := context.GameState
 	vendorOptions := []util.MenuItem{
 		{
 			MainText: "BUY",
@@ -77,15 +66,10 @@ func getWandVendorOptions(context ActionContext, vendor *Actor) []util.MenuItem 
 		},
 	}
 
-	if state.IsStoryModeEnabled() {
-		return append(getNPCTalkOption(context, vendor), vendorOptions...)
-	} else {
-		return vendorOptions
-	}
+	return vendorOptions
 }
 
 func getGeneralVendorOptions(context ActionContext, vendor *Actor) []util.MenuItem {
-	state := context.GameState
 	gui := context.UserInterface()
 	vendorOptions := []util.MenuItem{
 		{
@@ -94,23 +78,12 @@ func getGeneralVendorOptions(context ActionContext, vendor *Actor) []util.MenuIt
 				gui.OpenShopMenu(vendor)
 			},
 		},
-		{
-			MainText: "SELL",
-			Action: func() {
-				gui.BeginPlayerSellingTo(vendor)
-			},
-		},
 	}
 
-	if state.IsStoryModeEnabled() {
-		return append(getNPCTalkOption(context, vendor), vendorOptions...)
-	} else {
-		return vendorOptions
-	}
+	return vendorOptions
 }
 
 func getWeaponVendorOptions(context ActionContext, vendor *Actor) []util.MenuItem {
-	state := context.GameState
 	gui := context.UserInterface()
 	vendorOptions := []util.MenuItem{
 		{
@@ -119,27 +92,12 @@ func getWeaponVendorOptions(context ActionContext, vendor *Actor) []util.MenuIte
 				gui.OpenShopMenu(vendor)
 			},
 		},
-		{
-			MainText: "REPAIR",
-			Action: func() {
-				//gui.BeginPlayerRepairing(vendor)
-				//TODO
-				player := state.GetPlayer()
-				player.GetInventory().RepairAll()
-				player.GetStats().DecrementBy(stats.Gold, 10)
-			},
-		},
 	}
 
-	if state.IsStoryModeEnabled() {
-		return append(getNPCTalkOption(context, vendor), vendorOptions...)
-	} else {
-		return vendorOptions
-	}
+	return vendorOptions
 }
 
 func getArmorVendorOptions(context ActionContext, vendor *Actor) []util.MenuItem {
-	state := context.GameState
 	gui := context.UserInterface()
 	vendorOptions := []util.MenuItem{
 		{
@@ -148,35 +106,7 @@ func getArmorVendorOptions(context ActionContext, vendor *Actor) []util.MenuItem
 				gui.OpenShopMenu(vendor)
 			},
 		},
-		{
-			MainText: "STASH",
-			Action: func() {
-				gui.OpenPlayerStashInTown()
-			},
-		},
 	}
 
-	if state.IsStoryModeEnabled() {
-		return append(getNPCTalkOption(context, vendor), vendorOptions...)
-	} else {
-		return vendorOptions
-	}
-}
-
-func getNPCTalkOption(context ActionContext, vendor *Actor) []util.MenuItem {
-	state := context.GameState
-	gui := context.UserInterface()
-	talkOption := []util.MenuItem{
-		{
-			MainText: "TALK",
-			Action: func() {
-				textForNPC, onShowFunc := state.GetTextForNamedNPC(vendor)
-				gui.OpenTextWindow(textForNPC)
-				if onShowFunc != nil {
-					onShowFunc()
-				}
-			},
-		},
-	}
-	return talkOption
+	return vendorOptions
 }

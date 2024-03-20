@@ -1,9 +1,10 @@
 package common
 
 import (
+	"fmt"
 	"math/rand"
+	"rpg/defs"
 	"rpg/stats"
-	"strings"
 	"time"
 )
 
@@ -29,6 +30,18 @@ func NewChangeResourceAction(cause Cause, actor *Actor, resourceName stats.Name,
 }
 func (d *ChangeResourceAction) Execute(context ActionContext) []Action {
 	receiver := d.actor
+	levelName := context.GameState.GetMap().GetName()
+	isHellTown := levelName == string(defs.LevelNameTownHell)
+
+	// 7drl hack
+	if receiver.IsWinCondition() && !isHellTown {
+		context.Msg(fmt.Sprintf("%s is not affected by any damage!", receiver.Name()))
+		if rand.Intn(3) == 0 {
+			context.Speak(receiver, defs.SpeechTriggerHurtInTown)
+		}
+		return nil
+	}
+
 	d.changedByAmount = float64(d.amount) * d.changeFactor
 
 	receiver.GetStats().IncrementResourceBy(d.resourceName, d.changedByAmount)
@@ -62,11 +75,12 @@ func (d *ChangeResourceAction) prepareAnimations(context ActionContext) []Animat
 	var animations []Animation
 	amount := int(d.changedByAmount)
 	if d.resourceName == stats.Health && amount != 0 {
-		animation := NewDamageNumberAnimation(d.actor.MapPosition(), amount)
-		animation.StartWhenTrue(d.shouldStartAnimation)
-		animations = append(animations, animation)
+		numberAnimation := NewDamageNumberAnimation(d.actor.GetInternalName(), d.actor.IsAlive(), d.actor.MapPosition(), amount)
+		numberAnimation.SetAudio(amount < 0)
+		numberAnimation.StartWhenTrue(d.shouldStartAnimation)
+		animations = append(animations, numberAnimation)
 		if amount < 0 {
-			hitAnimation := NewHitAnimation(d.actor.MapPosition(), 0.2, 43, 2)
+			hitAnimation := NewHitAnimation(d.actor.MapPosition(),0.2, 43, 2)
 			hitAnimation.StartWhenTrue(d.shouldStartAnimation)
 			hitAnimation.SetOnFinished(func() {
 				freeNeighbor := context.GameState.GetMap().GetRandomNeighbor(randomSource, d.actor.MapPosition())
@@ -75,30 +89,12 @@ func (d *ChangeResourceAction) prepareAnimations(context ActionContext) []Animat
 					freeNeighbor = d.actor.MapPosition()
 				}
 				context.GameState.AddBloodDecalAt(freeNeighbor)
-				if rand.Intn(10) <= 8 && d.actor != context.GameState.GetPlayer() {
-					d.playHitSound(context)
-				}
 			})
 			animations = append(animations, hitAnimation)
 		}
 	}
 	return animations
 }
-
-func (d *ChangeResourceAction) playHitSound(context ActionContext) {
-	hitActor := d.actor
-	hitCue := "human_hit"
-	if strings.HasPrefix(hitActor.GetInternalName(), "skeleton") {
-		hitCue = "skeleton_hit"
-	} else if d.cause.Action() == ActionNameRangedAttack {
-		hitCue = "missile_hit_human"
-	} else if d.changedByAmount < -9 && !hitActor.IsAlive() {
-		hitCue = "heavy_hit_human"
-	}
-	audio := context.AudioPlayer
-	audio.PlayCue(hitCue)
-}
-
 func (d *ChangeResourceAction) GetResourceName() stats.Name {
 	return d.resourceName
 }

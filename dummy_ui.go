@@ -9,6 +9,10 @@ import (
 type DummyUI struct {
 }
 
+func (d DummyUI) OpenCenteredTextWindowWithCallback(texts []util.LabelText, onClose func()) {
+
+}
+
 func (d DummyUI) FadeToBlack() {
 
 }
@@ -38,7 +42,7 @@ func (d DummyUI) HasOverlays() bool {
 
 func (d DummyUI) ShowLogMessage(message string) {
 	//TODO implement me
-	println(message)
+	//println(message)
 }
 
 func (d DummyUI) Cancel() {

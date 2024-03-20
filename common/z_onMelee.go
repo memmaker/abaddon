@@ -2,8 +2,6 @@ package common
 
 import (
 	"fmt"
-
-	"rpg/stats"
 )
 
 type OnMeleeHook struct {
@@ -54,9 +52,6 @@ func NewMainOnMeleeHook() *OnMeleeHook {
 		ItemHook: ItemHook{
 			HookedAction: ActionNameMeleeAttack,
 			AfterHook: func(itemContext *ItemContext, action Action, actionContext ActionContext) []Action {
-				meleeAction := action.(*MeleeAttackAction)
-				actor := meleeAction.GetAttacker()
-				handleStealResource(actor, meleeAction)
 				return nil
 			},
 		},
@@ -65,18 +60,4 @@ func NewMainOnMeleeHook() *OnMeleeHook {
 
 type DamagingAction interface {
 	GetTotalDamageDealt() int
-}
-
-func handleStealResource(actor *Actor, damageAction DamagingAction) {
-	lifeStealFactor := actor.GetStats().GetAttributeAsFloat(stats.LifeStealFactor)
-	if lifeStealFactor > 0.0 {
-		lifeStealAmount := float64(damageAction.GetTotalDamageDealt()) * lifeStealFactor
-		actor.GetStats().GetResource(stats.Health).IncreaseByFloat(lifeStealAmount)
-	}
-
-	manaStealFactor := actor.GetStats().GetAttributeAsFloat(stats.ManaStealFactor)
-	if manaStealFactor > 0.0 {
-		manaStealAmount := float64(damageAction.GetTotalDamageDealt()) * manaStealFactor
-		actor.GetStats().GetResource(stats.Mana).IncreaseByFloat(manaStealAmount)
-	}
 }

@@ -1,9 +1,8 @@
 package common
 
 import (
-	"fmt"
-    "io/fs"
-    "os"
+	"io/fs"
+	"os"
 	"rpg/geometry"
 	"rpg/recfile"
 )
@@ -28,6 +27,7 @@ type StartInfo struct {
     LDTKMapFile       string
     UserConfiguration Configuration
     FileSystem        fs.ReadDirFS
+    PlayerName        string
 }
 
 
@@ -139,7 +139,7 @@ func (c Configuration) SaveToRecFile(recFilename string) {
 	recfile.Write(file, []recfile.Record{c.ToRecord()})
 }
 func NewConfigurationFromRecFile(recFilename string) Configuration {
-	println(fmt.Sprintf("Loading configuration from %s", recFilename))
+	//println(fmt.Sprintf("Loading configuration from %s", recFilename))
 	file, err := os.Open(recFilename)
 	configExists := false
 	var configMap recfile.DataMap
@@ -153,7 +153,7 @@ func NewConfigurationFromRecFile(recFilename string) Configuration {
 	}
 
 	configuration := Configuration{
-		AudioEnabled:           configMap.GetBoolOrFalse("AudioEnabled"),
+		AudioEnabled:           configMap.GetBoolOrTrue("AudioEnabled"),
 		ActorBobbingEnabled:    configMap.GetBoolOrTrue("ActorBobbingEnabled"),
 		CardinalMovementOnly:   configMap.GetBoolOrFalse("CardinalMovementOnly"),
 		DefaultFont:            configMap.GetStringOrDefault("DefaultFont", "assets/fonts/Ac437_EagleSpCGA_Alt3.ttf"),
@@ -163,10 +163,10 @@ func NewConfigurationFromRecFile(recFilename string) Configuration {
 		DrawTilesBehindActors:  configMap.GetBoolOrFalse("DrawTilesBehindActors"),
 		DrawTilesBehindItems:   configMap.GetBoolOrFalse("DrawTilesBehindItems"),
 		DrawTilesBehindObjects: configMap.GetBoolOrFalse("DrawTilesBehindObjects"),
-		ServeStats:             configMap.GetBoolOrFalse("ServeStats"),
-		ServeInventory:         configMap.GetBoolOrFalse("ServeInventory"),
-		ServeEquipment:         configMap.GetBoolOrFalse("ServeEquipment"),
-		ServeLog:               configMap.GetBoolOrFalse("ServeLog"),
+		ServeStats:             configMap.GetBoolOrTrue("ServeStats"),
+		ServeInventory:         configMap.GetBoolOrTrue("ServeInventory"),
+		ServeEquipment:         configMap.GetBoolOrTrue("ServeEquipment"),
+		ServeLog:               configMap.GetBoolOrTrue("ServeLog"),
 		FlipActorsHorizontally: configMap.GetBoolOrTrue("FlipActorsHorizontally"),
 		ItemNamesInShop:        ItemNamingScheme(configMap.GetStringOrDefault("ItemNamesInShop", string(ItemNamingSchemeEnchantments))),
 		WindowSize: geometry.Point{ //1280, Y: 800

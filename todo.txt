@@ -155,51 +155,83 @@ missing 7drl goals
 
 Schedule:
  - Day 1:
-   - Simplify stats/classes, etc. remove all healing
-   - Change player default appearance
-   - Setup new level structure: Hell Town -> Dungeons of Doom -> Caves -> Crypt -> Cathedral Town
+   - Simplify stats/classes, etc. remove all healing - DONE
+   - Change player default appearance - DONE
+   - Setup new level structure: Hell Town -> Hell -> Dungeons of Doom -> Caves -> Catacombs -> Cathedral -> Town - DONE
    - Setup new unique bosses: cerberus (dog), rogue, murder hobos, avatar, inquisitor, evil king
-   - Change item flavors to hell theme
+   - Change item flavors to hell theme - NICE TO HAVE
    - Win & loose conditions
-   - Main menu / Options menu
+   - Main menu / Options menu - WONT DO
  - Day 2:
    - Add horse mechanics:
-     - Allied actors, can fight alone
-     - Mount/unmount
-     - Abilities triggered by movement patterns
-		-> Hooves of Hell - Move towards an enemy and then away from him when he is next to you. Trigger horse kick with knockback.
-		-> Pounding: Move in a straight line towards an enemy twice, a third move in the same direction can now pin an enemy on the target tile.
-		-> Thunderstruck: Pay some health and wait a turn for an aoe lightning attack on all neighboring tiles
-     - Gory explosion on death
+     - Allied actors, can fight alone - DONE
+     - Mount/unmount - FIRST VERSION - BUGS: Light Source (Equipment should be re-equipped)
+     - Abilities triggered by movement patterns - DONE
+		-> Hooves of Hell - Move towards an enemy and then away from him when he is next to you. Trigger horse kick with knockback. - DONE
+		-> Pounding: Move in a straight line towards an enemy twice, a third move in the same direction can now pin an enemy on the target tile. - DONE
+		-> Thunderstruck: Pay some health and wait a turn for an aoe lightning attack on all neighboring tiles - DONE
+     - Gory explosion on death - DONE
    - Add sword of vengeance mechanics
-     - Save damage dealt with the sword as blood
-     - Adjust damage accordingly to blood counter
+     - Save damage dealt with the sword as blood - DONE
+     - Adjust damage accordingly to blood counter - DONE
      - Sacrifice blood counter for special attack
- - Day 3:
+ - Day 3-4:
+   - Abilities
+     - Activated abilities (unique to these items, not available by other means)
+     - Thorns %
+     - Reflect %
+     - Flying
+     - Invisibility for x turns
+     - Inverter Walls<->Floors
+     - Inverter Water<->Lava
+     - Firestarter: Trigger all visible barrels
    - Add environmental stuff
      - Exploding barrels
      - Chasms
      - Spikes
-     - Oil
- - Day 4:
-   - Add abilities for the player and the enemies
-
- - Day 5:
-   - Add unique items for the player advancement
+     - Oil & Fire
+   - Uniques
+     - Set of the Avatar
+       - Magical Cuirass
+       - Magical Shield
+       - Magical Helmet
+     - Set of the Chosen
+       - Gloves
+       - Boots
+       - Cuirass
+       - Helmet
+       - Crown
+       - 2 Rings
+       - Amulet
+       - Shield
+     - Hexenjäger Set
+       - Shield
+     - Bow of the huntress
+     - Midas Gloves
+     - Demon's blood
+     - Dragon's fire
+     - Call of Ancient Gods
+     - Blackstorm
+     - Bracers of the Faceless
    - Adjust shopping
 
- - Day 6:
+ - Day 5, 6, 7:
    - Playtesting & Balancing
    - Bugfixes
-
- - Day 7:
-   - Playtesting & Balancing
    - Publishing
 
 
 Plan for the 7drl "Abaddon"
  - We reverse the direction of the crawl, so the player is going to start in hell
- - Remove: Classes, Mana, Regeneration
+ - You cannot regenerate and every attack will cost you health
+ - You have to make sure, that over the cause the game, you deal more damage than you receive
+ - You get stronger by absorbing the blood of your enemies with your sword in melee combat
+ - You will also choose a unique item after fighting unique enemies on each level
+ - No random loot drops, instead you can buy items in shops, paid with the blood of your enemies
+
+ - Remove: Classes, Mana, Regeneration, Gold, XP, Levels
+ - Resources are: Life (Finite, lost in combat, used for powerful attacks) & Blood (Infinite, gained in combat, used for special attacks)
+
  - Core idea: Try dealing more damage than you receive by using AoE and chain combos effectively.
  - Core interactions:
    - Clever use of relocation in combination with aoe

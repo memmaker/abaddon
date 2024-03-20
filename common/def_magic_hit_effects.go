@@ -185,16 +185,28 @@ func (g *Factory) projectFire(args util.Arguments) *HitEffect {
 func (g *Factory) summonRandomMonster(args util.Arguments) *HitEffect {
 	dlvl := util.ParseDice(args.Get(0)).Roll()
 	return &HitEffect{
-		Activate: func(attacker *Actor, target geometry.Point, hitPositions []geometry.Point) {
+		Activate: func(caster *Actor, target geometry.Point, hitPositions []geometry.Point) {
 			for _, hitPos := range hitPositions {
-				g.actionBroker.Execute(NewSpawnAction(NewActorCause("Summon monster", attacker), "monster", func() {
+				g.actionBroker.Execute(NewSpawnAction(NewActorCause("Summon monster", caster), "monster", func() {
 					newEnemy, _ := g.NewRandomEnemy(dlvl)
 					currentMap := g.state.GetMap()
+					if !currentMap.CanPlaceActorHere(hitPos) {
+						freeCells := currentMap.GetFreeCellsForDistribution(hitPos,1, func(pos geometry.Point) bool {
+							return currentMap.CanPlaceActorHere(pos)
+						})
+						if len(freeCells) == 0 {
+							return
+						}
+						hitPos = freeCells[0]
+					}
 					currentMap.AddActor(newEnemy, hitPos)
+					newEnemy.SetFaction(caster.GetFaction())
 					newEnemy.SetDrawPosition(hitPos.ToPointF())
 
 					timeKeeper := g.getTimeKeeper()
 					timeKeeper.AddTimed(newEnemy)
+					g.audioPlayer.PlayCue("king_spell")
+					g.state.msg(fmt.Sprintf("%s summons %s", caster.Name(), newEnemy.Name()))
 				}))
 			}
 		},
@@ -229,13 +241,19 @@ func (g *Factory) jumpStart(args util.Arguments) *HitEffect {
 			jump.DisableAnimation()
 			jumpExecution(jump)
 
-			g.actionBroker.QueueForExecution(NewRangedAttackAction(NewActorCause("JumpStart", attacker), attacker, jumpInfo.JumpedPos))
+			if attacker.GetEquipment().HasRangedWeaponEquipped() {
+				g.actionBroker.QueueForExecution(NewRangedAttackAction(NewActorCause("JumpStart", attacker), attacker, jumpInfo.JumpedPos))
+			} else if currentMap.IsActorAt(jumpInfo.JumpedPos) {
+				targetActor := currentMap.ActorAt(jumpInfo.JumpedPos)
+				g.actionBroker.QueueForExecution(NewMeleeAttackAction(NewActorCause("JumpStart", attacker), attacker, targetActor))
+			}
 
 			actionCost := 100 / attacker.GetMoveSpeed()
 			g.actionBroker.QueueForExecution(NewEndPlayerTurnAction(NewActorCause("JumpStart", attacker), actionCost))
 		},
 		Description: []util.LabelText{
-			util.LabelTextFromString("Jumpstart DESC HERE"),
+			util.LabelTextFromString("Athletic combat maneuver:"),
+			util.LabelTextFromString("Jump over an enemy and attack from behind"),
 		},
 	}
 }
@@ -269,9 +287,6 @@ func (g *Factory) fireZone(args util.Arguments) *HitEffect {
 	damageInterval := util.ParseDice(args.Get(0))
 	return &HitEffect{
 		Activate: func(attacker *Actor, target geometry.Point, hitPositions []geometry.Point) {
-			if !attacker.GetInventory().HasLightSource() {
-				return
-			}
 			damagePerTile := damageInterval.Roll()
 			damageSpellAction := NewDamageSpellAction(NewActorCause("Flask of Oil", attacker), attacker, damagePerTile, target, hitPositions)
 			g.actionBroker.Execute(damageSpellAction)
@@ -304,9 +319,9 @@ func (g *Factory) stealItemAndTeleport(args util.Arguments) *HitEffect {
 			currentMap.ApplyToActorsAt(hitPositions, func(hitActor *Actor) {
 				g.actionBroker.Execute(NewStealItemAction(NewActorCause("Steal", attacker), attacker, hitActor))
 			})
-			teleportAction := g.NewUntargetedActionFromName("teleport")
+			teleportAction := g.NewUntargetedActionFromName("random_near_teleport")
 			teleportAction.Invoke(attacker, "StealAndTeleport")
-			attacker.SetNeutral()
+			attacker.SetNeutralFaction()
 		},
 		Description: []util.LabelText{
 			util.LabelTextFromString("Steal item and teleport"),
@@ -389,7 +404,8 @@ func (g *Factory) earthShaker(args util.Arguments) *HitEffect {
 			g.queuePush(currentMap, hitPositions, attacker, pushDist)
 		},
 		Description: []util.LabelText{
-			util.LabelTextFromString("Rush forward to a specified location."),
+			util.LabelTextFromString("Rush forward to a specified location,"),
+			util.LabelTextFromString("dealing damage to all adjacent locations"),
 		},
 	}
 }
@@ -403,4 +419,40 @@ func (g *Factory) queuePush(currentMap *gridmap.GridMap[*Actor, *Item, Object], 
 		knockbackActions = append(knockbackActions, knockbackAction)
 	})
 	g.actionBroker.QueueForExecutionAtTheSameTime(knockbackActions)
+}
+
+func (g *Factory) bridge(args util.Arguments) *HitEffect {
+	return &HitEffect{
+		Activate: func(attacker *Actor, target geometry.Point, hitPositions []geometry.Point) {
+			currentMap := g.state.GetMap()
+			for _, pos := range hitPositions {
+				if currentMap.IsObviousHazardAt(pos) {
+					currentMap.SetTile(pos, defs.FloorTile)
+				}
+			}
+		},
+		Description: []util.LabelText{
+			util.LabelTextFromString("Bridge a hazard"),
+		},
+	}
+}
+
+func (g *Factory) breakFloor(args util.Arguments) *HitEffect {
+	return &HitEffect{
+		Activate: func(attacker *Actor, target geometry.Point, hitPositions []geometry.Point) {
+			currentMap := g.state.GetMap()
+			for _, pos := range hitPositions {
+				if currentMap.IsTileWalkable(pos) {
+					currentMap.SetTile(pos, defs.ChasmTile)
+					if currentMap.IsActorAt(pos) {
+						actor := currentMap.ActorAt(pos)
+						g.actionBroker.Execute(NewFallIntoChasmAction(NewActorCause("Fall", attacker), actor))
+					}
+				}
+			}
+		},
+		Description: []util.LabelText{
+			util.LabelTextFromString("Create a chasm"),
+		},
+	}
 }

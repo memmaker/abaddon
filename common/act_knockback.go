@@ -50,12 +50,12 @@ func (d *KnockbackAction) Execute(context ActionContext) []Action {
 		return true
 	})
 	d.targetPos = d.originPos
+	hitObstacle := false
 	var actions []Action
 	distanceMoved := 0
 	for i, p := range los {
 		pos := p
 		if gameMap.IsCurrentlyPassable(pos) {
-
 			distanceMoved++
 			d.targetPos = pos
 
@@ -65,17 +65,24 @@ func (d *KnockbackAction) Execute(context ActionContext) []Action {
 				return actor.DrawPosition().ToPoint() == pos
 			}
 
-			// Should be an action
-			actions = append(actions, TriggerCellEffectsDuringMovementForActor(state, d, actor, pos, startAnimating)...)
+			// This could potentially remove the actor completely from the map
+			effectsDuringMovementForActor, isTerminal := TriggerCellEffectsDuringMovementForActor(state, d, actor, pos, startAnimating)
 
-			if distanceMoved == d.distance {
+			if !isTerminal {
+				actions = append(actions, effectsDuringMovementForActor...)
+			}
+
+
+			if distanceMoved == d.distance || isTerminal {
 				if i+1 < len(los) {
 					d.obstaclePos = los[i+1]
+					hitObstacle = true
 				}
 				break
 			}
 		} else {
 			d.obstaclePos = pos
+			hitObstacle = true
 			break
 		}
 	}
@@ -87,7 +94,7 @@ func (d *KnockbackAction) Execute(context ActionContext) []Action {
 		}
 	}
 
-	if !gameMap.IsCurrentlyPassable(d.obstaclePos) {
+	if hitObstacle && !gameMap.IsCurrentlyPassable(d.obstaclePos) {
 		// problem.. this will trigger at the same tick as the knockback animation begins..
 		actionPushed := NewChangeResourceAction(d.Cause(), actor, stats.Health, -5)
 		actionPushed.SetAnimationStartPredicate(func() bool {
@@ -101,6 +108,9 @@ func (d *KnockbackAction) Execute(context ActionContext) []Action {
 				return d.isNotAnimated() || d.animation.IsDone()
 			})
 			actions = append(actions, action)
+		} else if gameMap.IsObjectAt(d.obstaclePos) {
+			objectAtLocation := gameMap.ObjectAt(d.obstaclePos)
+			objectAtLocation.DamageReceived(5)
 		}
 	}
 	d.prepareAnimation()
@@ -125,6 +135,7 @@ func (d *KnockbackAction) prepareAnimation() {
 		actor:       d.actor,
 		ticksNeeded: ticksNeeded,
 		isForPlayer: false,
+		audioCue:    "knockback",
 	}
 }
 
@@ -148,9 +159,9 @@ func (d *KnockbackAction) DisableAnimation() {
 	d.animationDisabled = true
 }
 
-func TriggerCellEffectsDuringMovementForActor(state *State, sourceAction Action, actor *Actor, mapPos geometry.Point, startAnimating func() bool) []Action {
+func TriggerCellEffectsDuringMovementForActor(state *State, sourceAction Action, actor *Actor, mapPos geometry.Point, startAnimating func() bool) (followUp []Action, isTerminal bool) {
 	if actor.HasStatusEffect(StatusFlying) {
-		return nil
+		return nil, false
 	}
 
 	currentMap := state.GetMap()
@@ -164,14 +175,17 @@ func TriggerCellEffectsDuringMovementForActor(state *State, sourceAction Action,
 	actorCell := currentMap.GetCell(newPos)
 	actorTile := actorCell.TileType
 
-	if actorTile.Special == gridmap.SpecialTileDamaging {
+	if actorTile.Special == gridmap.SpecialTileSpikes || actorTile.Special == gridmap.SpecialTileLava {
 		action := NewChangeResourceAction(sourceAction.Cause(), actor, stats.Health, -3)
 		action.SetAnimationStartPredicate(startAnimating)
-		return OneAction(action)
-	}/* else if actorTile.Special == gridmap.SpecialTileChasm {
-		state.SendActorOneLevelDown(actor)
-
+		return OneAction(action), actorTile.Special == gridmap.SpecialTileSpikes
+	} else if actorTile.Special == gridmap.SpecialTileChasm {
+		action := NewFallIntoChasmAction(sourceAction.Cause(), actor)
+		if actor == state.GetPlayer() {
+			state.flags.SetTrue("player_fell_into_chasm")
+		}
+		state.actions.QueueForExecution(action)
+		return nil, true
 	}
-	*/
-	return nil
+	return nil, false
 }

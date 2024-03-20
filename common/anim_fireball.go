@@ -74,3 +74,7 @@ func (m *FireballAnimation) Draw(renderer TileRenderer) {
 		hitAnim.Draw(renderer)
 	}
 }
+
+func (m *FireballAnimation) AudioCue() string {
+	return "fireball"
+}

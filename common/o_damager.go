@@ -16,6 +16,14 @@ type DamageDealingObject struct {
 	dealDamageAtLocation func(location geometry.Point, startAnimating func() bool)
 }
 
+func (d *DamageDealingObject) IsConductor() bool {
+	return false
+}
+
+func (d *DamageDealingObject) DamageReceived(amount int) {
+
+}
+
 func (d *DamageDealingObject) Name() string {
 	return "fire"
 }
@@ -58,7 +66,6 @@ func (d *DamageDealingObject) IsPassableForProjectile() bool {
 
 func (d *DamageDealingObject) Turn() {
 	d.turnsUntilRemoval--
-	println("turns until removal", d.turnsUntilRemoval)
 	if d.onTurn != nil {
 		d.onTurn()
 	}

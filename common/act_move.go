@@ -2,6 +2,7 @@ package common
 
 import (
 	"rpg/geometry"
+	"rpg/gridmap"
 	"rpg/util"
 )
 
@@ -14,6 +15,7 @@ type MoveAction struct {
 	animationDelay            float64
 	isMovementVisibleToPlayer bool
 	animationDisabled         bool
+	moveCostFactor            float64
 }
 
 func (d *MoveAction) IsMovementVisibleToPlayer() bool {
@@ -30,6 +32,7 @@ func NewMoveAction(source Cause, actor *Actor, targetPos geometry.Point, isPlaye
 		targetPos:      targetPos,
 		isPlayer:       isPlayer,
 		animationDelay: 0.2,
+		moveCostFactor: 1.0,
 	}
 }
 
@@ -38,7 +41,7 @@ func (d *MoveAction) SetAnimationDelay(delay float64) {
 }
 
 func (d *MoveAction) GetDelayInAut() int {
-	autUsed := 100 / d.actor.GetMoveSpeed()
+	autUsed := int(float64(100 / d.actor.GetMoveSpeed()) * d.moveCostFactor)
 	return autUsed
 }
 
@@ -52,6 +55,11 @@ func (d *MoveAction) Execute(context ActionContext) []Action {
 	gameMap := state.GetMap() // read state
 	actor := d.actor
 	d.originPos = actor.MapPosition()
+
+	if gameMap.IsSpecialAt(d.originPos, gridmap.SpecialTileWater) || gameMap.IsSpecialAt(d.originPos, gridmap.SpecialTileLava) {
+		d.moveCostFactor = 1.5
+	}
+
 	gameMap.MoveActor(actor, d.targetPos) // write state
 
 	d.isMovementVisibleToPlayer = false
@@ -106,14 +114,18 @@ func PlayerMoveToAttack(actor *Actor, relativeDirection geometry.Point, forceAtt
 	state := context.GameState
 	gameMap := state.GetMap()
 	targetPos := actor.MapPosition().Add(relativeDirection)
+	if !gameMap.Contains(targetPos) {
+		return nil
+	}
 	isObjectAt := gameMap.IsObjectAt(targetPos)
 
 	if isObjectAt {
 		objectAtPos := gameMap.ObjectAt(targetPos)
 		if state.IsClosedDoorAt(targetPos) {
 			return NewOpenDoorAction(NewActorCause("Open door", actor), actor, targetPos)
-		} else {
+		} else if !objectAtPos.IsWalkable(actor) {
 			objectAtPos.ActorBumpedInto(actor, AnimateNow())
+			return nil
 		}
 	}
 
@@ -121,7 +133,10 @@ func PlayerMoveToAttack(actor *Actor, relativeDirection geometry.Point, forceAtt
 	isTargetFree := !isActorAt && gameMap.IsWalkable(targetPos)
 	if isActorAt {
 		actorAtPos := gameMap.ActorAt(targetPos)
-		if actorAtPos.IsVendor() && !forceAttack {
+		isAlly := actor.IsAlly(actorAtPos)
+		if isAlly {
+			return NewSwapPositionsAction(NewActorCause("Swap positions", actor), actor, actorAtPos, state.GetPlayer() == actor)
+		} else if actorAtPos.IsVendor() && !forceAttack {
 			return NewTalkToAction(NewActorCause("Talk to", actor), actorAtPos)
 		} else {
 			return NewMeleeAttackAction(NewActorCause("Melee attack", actor), actor, actorAtPos)

@@ -2,9 +2,6 @@ package common
 
 import (
 	"fmt"
-	"math/rand"
-
-	"rpg/stats"
 )
 
 type OnDieHook struct {
@@ -64,26 +61,10 @@ func (d *OnKillHook) After(action Action, context ActionContext) []Action {
 }
 
 func (d *OnKillHook) onKill(context ActionContext, killer, victim *Actor) []Action {
-	msg := context.Msg
-	victimLevel := victim.GetStats().GetAttribute(stats.Level)
-	victimXP := max(1, victim.GetStats().GetAttribute(stats.Experience))
-
-	killerLevel := killer.GetStats().GetAttribute(stats.Level)
-
-	multiplier := float64(victimLevel) / float64(killerLevel) //
-
-	awardXP := int(float64(victimXP) * multiplier)
-
-	awardGold := rand.Intn(victimXP) + victimXP + rand.Intn(awardXP) + awardXP
-
 	// should technically be its own action, if we wanted to hook this..
-	killer.GetStats().IncrementBy(stats.Experience, awardXP)
-	killer.GetStats().IncrementBy(stats.Gold, awardGold)
 	state := context.GameState
 	if killer == state.GetPlayer() {
-		msg(fmt.Sprintf("You gain %d XP and %d gold", awardXP, awardGold))
 		flags := state.GetFlags()
-
 		flags.Increment(fmt.Sprintf("killed:%s", victim.GetInternalName()))
 
 		currentMap := state.GetMap()
@@ -94,9 +75,6 @@ func (d *OnKillHook) onKill(context ActionContext, killer, victim *Actor) []Acti
 		if len(livingEnemies) == 0 {
 			flags.SetTrue(fmt.Sprintf("all_clear:%s", currentMapName))
 		}
-	} else {
-		msg(fmt.Sprintf("%s gains %d XP and %d gold", killer.Name(), awardXP, awardGold))
 	}
-
 	return nil
 }

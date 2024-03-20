@@ -31,6 +31,10 @@ type Console struct {
 	focus           tview.Primitive
 }
 
+func (c *Console) OpenCenteredTextWindowWithCallback(texts []util.LabelText, onClose func()) {
+
+}
+
 func (c *Console) FadeToBlack() {
 
 }
@@ -183,29 +187,17 @@ func (c *Console) UpdateStatsLabel() {
 	player := c.context.GameState().GetPlayer()
 	pStats := player.GetStats()
 
-	level := pStats.GetAttribute(stats.Level)
-	levelStr := fmt.Sprintf("Level: %-2d", level)
-
-	gold := pStats.GetAttribute(stats.Gold)
-	goldStr := fmt.Sprintf("Gold: %-5d", gold)
+	gold := pStats.GetAttribute(stats.Blood)
+	goldStr := fmt.Sprintf("Blood: %-5d", gold)
 
 	hp := pStats.GetResource(stats.Health).Value()
-	hpMax := pStats.GetResource(stats.Health).GetMax()
-	hpValString := fmt.Sprintf("%d(%d)", hp, hpMax)
-	hpStr := fmt.Sprintf("HP: %-7s", hpValString)
-
-	str := pStats.GetAttribute(stats.Strength)
-	strMax := pStats.GetAttribute(stats.Strength)
-	strValString := fmt.Sprintf("%d(%d)", str, strMax)
-	strStr := fmt.Sprintf("Str: %-7s", strValString)
+	hpValString := fmt.Sprintf("%d", hp)
+	hpStr := fmt.Sprintf("Life: %-7s", hpValString)
 
 	armor := player.GetArmorClass()
 	armorStr := fmt.Sprintf("Armor: %-3d", armor)
 
-	xp := pStats.GetAttribute(stats.Experience)
-	xpStr := fmt.Sprintf("XP: %d", xp)
-
-	statusStr := fmt.Sprintf("%s %s %s %s %s %s", levelStr, goldStr, hpStr, strStr, armorStr, xpStr)
+	statusStr := fmt.Sprintf("%s %s %s", goldStr, hpStr, armorStr)
 
 	c.statusBar.SetText(statusStr)
 }
@@ -237,18 +229,18 @@ func (c *Console) OpenShopMenu(npc *common.Actor) {
 }
 func (c *Console) tryToBuy(item *common.Item, seller *common.Actor) {
 	player := c.context.GameState().GetPlayer()
-	goldAmount := player.GetStats().GetAttribute(stats.Gold)
+	goldAmount := player.GetStats().GetAttribute(stats.Blood)
 	msg := c.ShowLogMessage // TODO, this is wrong..
 	cost := item.BuyPrice()
 	cannotPayForItem := cost > goldAmount
 
 	if cannotPayForItem {
-		msg("You don't have enough gold")
+		msg("You don't have enough blood")
 		c.OpenShopMenu(seller)
 		return
 	}
-	player.GetStats().DecrementBy(stats.Gold, cost)
-	seller.GetStats().IncrementBy(stats.Gold, cost)
+	player.GetStats().DecrementBy(stats.Blood, cost)
+	seller.GetStats().IncrementBy(stats.Blood, cost)
 
 	alwaysItems := c.context.Definitions.VendorDefinitions[string(seller.GetVendorType())].Always
 	seller.GetInventory().Remove(item)
@@ -258,7 +250,7 @@ func (c *Console) tryToBuy(item *common.Item, seller *common.Actor) {
 		seller.GetInventory().Add(item.Clone())
 	}
 
-	msg(fmt.Sprintf("You bought [:darkText]%s[:white] for [:darkText]%d[:white] gold", item.Name(), cost))
+	msg(fmt.Sprintf("You bought [:darkText]%s[:white] for [:darkText]%d[:white] blood", item.Name(), cost))
 	c.OpenShopMenu(seller)
 }
 
@@ -267,7 +259,7 @@ func (c *Console) openShopMenuWithHandler(inventory *common.Inventory, handler f
 		return
 	}
 	player := c.context.GameState().GetPlayer()
-	goldAmount := player.GetStats().GetAttribute(stats.Gold)
+	goldAmount := player.GetStats().GetAttribute(stats.Blood)
 
 	inventoryStacks := inventory.StackedItems()
 	common.SortInventory(inventoryStacks)
@@ -282,7 +274,7 @@ func (c *Console) openShopMenuWithHandler(inventory *common.Inventory, handler f
 		item := inventoryStacks[row][0]
 		handler(item)
 	})
-	table.SetTitle(fmt.Sprintf("You have %d gold", goldAmount))
+	table.SetTitle(fmt.Sprintf("You have %d blood", goldAmount))
 	longestName := 0
 	longestPrice := 0
 	for itemIndex, i := range inventoryStacks {
@@ -296,13 +288,13 @@ func (c *Console) openShopMenuWithHandler(inventory *common.Inventory, handler f
 			colorCodeForPrice = "negative"
 		}
 		/*
-		itemName := item.Name()
-		if c.configuration.ItemNamesInShop == common.ItemNamingSchemeEnchantments {
-			itemName = item.PlusName()
-		} else if c.configuration.ItemNamesInShop == common.ItemNamingSchemeBandStyle {
+			itemName := item.Name()
+			if c.configuration.ItemNamesInShop == common.ItemNamingSchemeEnchantments {
+				itemName = item.PlusName()
+			} else if c.configuration.ItemNamesInShop == common.ItemNamingSchemeBandStyle {
 
-		 */
-			itemName := item.BandStyleName()
+		*/
+		itemName := item.BandStyleName()
 		//}
 		if len(i) > 1 {
 			itemName = fmt.Sprintf("%s (x%d)", itemName, len(i))
@@ -312,15 +304,15 @@ func (c *Console) openShopMenuWithHandler(inventory *common.Inventory, handler f
 		priceString := fmt.Sprintf("%d", cost)
 
 		nameCell := &tview.TableCell{
-			Text:  nameString,
-			Color: toTcellColor(item.TintColor()),
-			Align: tview.AlignLeft,
+			Text:          nameString,
+			Color:         toTcellColor(item.TintColor()),
+			Align:         tview.AlignLeft,
 			NotSelectable: false,
 		}
 		priceCell := &tview.TableCell{
-			Text:  priceString,
-			Color: toTcellColor(defs.ColorFromName(colorCodeForPrice)),
-			Align: tview.AlignRight,
+			Text:          priceString,
+			Color:         toTcellColor(defs.ColorFromName(colorCodeForPrice)),
+			Align:         tview.AlignRight,
 			NotSelectable: false,
 		}
 		table.SetCell(itemIndex, 0, nameCell)
@@ -367,66 +359,60 @@ func (c *Console) SetDebugActions(actions func() common.DebugActions) {
 }
 
 func (c *Console) HandleInput() (terminationCode int) {
-
-	if !c.screen.HasPendingEvent() {
-		return 0
+	ev := c.screen.PollEvent()
+	if ev == nil {
+		return 1
 	}
 
-	for c.screen.HasPendingEvent() {
-		ev := c.screen.PollEvent()
-		if ev == nil {
-			return 1
+	switch typedEvent := ev.(type) {
+	case *tcell.EventResize:
+		c.onScreenSizeChanged()
+	case *tcell.EventKey:
+		if c.focus != nil {
+			handler := c.focus.InputHandler()
+			handler(typedEvent, func(p tview.Primitive) {
+				c.focus = p
+			})
+			return c.terminationCode
 		}
-
-		switch typedEvent := ev.(type) {
-		case *tcell.EventResize:
-			c.onScreenSizeChanged()
-		case *tcell.EventKey:
-			if c.focus != nil {
-				handler := c.focus.InputHandler()
-				handler(typedEvent, func(p tview.Primitive) {
-					c.focus = p
-				})
-				return c.terminationCode
-			}
-			typedRune := typedEvent.Rune()
-			//mod, key, ch := typedEvent.Modifiers(), typedEvent.Key(), typedRune
-			//println(fmt.Sprintf("EventKey Modifiers: %d Key: %d Rune: %d", mod, key, ch))
-			actions := c.context.PlayerAction()
-			if typedRune == 'w' {
-				actions.ManualMovePlayer(geometry.Point{X: 0, Y: -1})
-			} else if typedRune == 's' {
-				actions.ManualMovePlayer(geometry.Point{X: 0, Y: 1})
-			} else if typedRune == 'a' {
-				actions.ManualMovePlayer(geometry.Point{X: -1, Y: 0})
-			} else if typedRune == 'd' {
-				actions.ManualMovePlayer(geometry.Point{X: 1, Y: 0})
-			} else if typedRune == 'i' {
-				c.OpenListInventory()
-			} else if typedRune == 'l' {
-				c.showLog()
-			} else if typedRune == 'b' {
-				c.OpenListInventoryForDropping()
-			} else if typedRune == 'g' {
-				actions.PickUpItem()
-			} else if typedRune == 'S' {
-				c.OpenSkillsMenu()
-			} else if typedRune == 'C' {
-				c.ShowFullStats()
-			} else if typedRune == 'Q' {
-				c.screen.Clear()
-				c.screen.Fini()
-				c.terminationCode = 1
-			} else if typedRune == 'o' {
-				actions.StartAutoExplore()
-			} else if typedEvent.Key() == tcell.KeyTab {
-				actions.AutoAttack()
-			} else if typedEvent.Key() == tcell.KeyF10 {
-				c.context.DebugActions().OpenDebugMenu()
-			}
+		typedRune := typedEvent.Rune()
+		//mod, key, ch := typedEvent.Modifiers(), typedEvent.Key(), typedRune
+		//println(fmt.Sprintf("EventKey Modifiers: %d Key: %d Rune: %d", mod, key, ch))
+		actions := c.context.PlayerAction()
+		if typedRune == 'w' {
+			actions.ManualMovePlayer(geometry.Point{X: 0, Y: -1})
+		} else if typedRune == 's' {
+			actions.ManualMovePlayer(geometry.Point{X: 0, Y: 1})
+		} else if typedRune == 'a' {
+			actions.ManualMovePlayer(geometry.Point{X: -1, Y: 0})
+		} else if typedRune == 'd' {
+			actions.ManualMovePlayer(geometry.Point{X: 1, Y: 0})
+		} else if typedRune == 'i' {
+			c.OpenListInventory()
+		} else if typedRune == 'l' {
+			c.showLog()
+		} else if typedRune == 'b' {
+			c.OpenListInventoryForDropping()
+		} else if typedRune == 'g' {
+			actions.PickUpItem()
+		} else if typedRune == 't' {
+			actions.MountToggle()
+		} else if typedRune == 'S' {
+			c.OpenSkillsMenu()
+		} else if typedRune == 'C' {
+			c.ShowFullStats()
+		} else if typedRune == 'Q' {
+			c.screen.Clear()
+			c.screen.Fini()
+			c.terminationCode = 1
+		} else if typedRune == 'o' {
+			actions.StartAutoExplore()
+		} else if typedEvent.Key() == tcell.KeyTab {
+			actions.AutoAttack()
+		} else if typedEvent.Key() == tcell.KeyF10 {
+			c.context.DebugActions().OpenDebugMenu()
 		}
 	}
-
 	return c.terminationCode
 }
 
@@ -651,7 +637,8 @@ func (c *Console) drawMap(screen tcell.Screen, xOff int, yOff int, sWidth int, s
 					drawStyle = drawStyle.Foreground(toTcellColor(actorAt.GetStats().GetResource(stats.Health).AsColor()))
 					drawRune = '@'
 				} else {
-					drawRune = rune(actorAt.Name()[0])
+					drawRune = actorAt.AsciiIcon(0)
+					drawStyle = drawStyle.Foreground(toTcellColor(actorAt.GetColor()))
 				}
 				c.putRune(screen, drawX, drawY, drawStyle, drawRune)
 			} else if canSeeLocation && currentMap.IsItemAt(mapPos) {
@@ -675,7 +662,11 @@ func (c *Console) drawMap(screen tcell.Screen, xOff int, yOff int, sWidth int, s
 			} else if currentMap.IsTileWithSpecialAt(mapPos, gridmap.SpecialTileWater) {
 				c.putRune(screen, drawX, drawY, drawStyle.Foreground(toTcellColor(c.context.GameState().GetWaterColor())), '~')
 			} else if currentMap.IsTileWithSpecialAt(mapPos, gridmap.SpecialTileMountain) {
-				c.putRune(screen, drawX, drawY, drawStyle, '^')
+				c.putRune(screen, drawX, drawY, drawStyle.Foreground(toTcellColor(defs.Brown)), '^')
+			} else if currentMap.IsTileWithSpecialAt(mapPos, gridmap.SpecialTileLava) {
+				c.putRune(screen, drawX, drawY, drawStyle.Foreground(toTcellColor(defs.Red)), '~')
+			} else if currentMap.IsTileWithSpecialAt(mapPos, gridmap.SpecialTileForest) {
+				c.putRune(screen, drawX, drawY, drawStyle.Foreground(toTcellColor(defs.Green)), ';')
 			} else if currentMap.IsTileWalkable(mapPos) {
 				if _, hasDecal := currentMap.GetDecal(mapPos); hasDecal {
 					drawStyle = drawStyle.Foreground(toTcellColor(defs.Red))

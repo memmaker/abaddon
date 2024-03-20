@@ -39,6 +39,7 @@ const (
 	StatusPoisoned  StatusEffect = "poisoned"  // random actions
 	StatusCharmed   StatusEffect = "charmed"   // change faction
 	StatusBerserk   StatusEffect = "berserk"   // random attacks
+	StatusExplodeOnDeath   StatusEffect = "explode_on_death"   // explodes on death
 	StatusHaywire   StatusEffect = "haywire"   // random magic
 	StatusFlying    StatusEffect = "flying"    // can move over some obstacles, chance to dodge melee attacks
 	// parametrized

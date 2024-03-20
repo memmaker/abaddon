@@ -30,15 +30,13 @@ func (d OnHealthChangedHook) After(action Action, context ActionContext) []Actio
 
 	if changeResource.GetResourceName() == stats.Health && changeResource.GetChangeAmount() < 0 {
 
-		actorFromAction.SetHostile()
-		actorFromAction.SetState(ActorStateAttacking)
-
 		state := context.GameState
 		if actorFromAction.IsVendor() {
+			actorFromAction.SetMonsterFaction()
+			actorFromAction.SetVendorType(VendorTypeNone)
 			for _, otherActor := range state.GetMap().Actors() {
 				if otherActor.IsVendor() {
-					otherActor.SetHostile()
-					otherActor.SetState(ActorStateAttacking)
+					otherActor.SetMonsterFaction()
 					otherActor.SetVendorType(VendorTypeNone)
 				}
 			}

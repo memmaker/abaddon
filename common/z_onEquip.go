@@ -94,11 +94,8 @@ func (d OnEquipHook) After(action Action, context ActionContext) []Action {
 		}
 	}
 
-	context.UserInterface().ShowFullStats() // problem, this is a modal in the console UI..
+	//context.UserInterface().ShowFullStats() // problem, this is a modal in the console UI..
 
-	if item.IsModifyingLight() {
-		return OneAction(NewUpdateFoVAction(action.Cause(), actor))
-	}
 	//actor := changeEquipmentAction.GetAttacker()
 	/*if actor == state.GetPlayer() {
 	      return OneAction(NewEndPlayerTurnAction(d, changeEquipmentAction.GetTimeNeededInAut()))

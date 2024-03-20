@@ -43,6 +43,7 @@ func (c DataContainer) GetItemCategories() []ItemCategory {
 	return categories
 }
 func LoadGameData(logErr func(err string)) DataContainer {
+	printDefLoad := false
 	itemDefs := make(map[string]ItemDefinition)
 	itemDir := path.Join("assets", "data", "items")
 	enemyDir := path.Join("assets", "data", "enemies")
@@ -52,79 +53,107 @@ func LoadGameData(logErr func(err string)) DataContainer {
 	join := path.Join(itemDir, "armor.rec")
 	file, _ := files.Open(join)
 	armorDefs := ReadItemDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d armor definitions", len(armorDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d armor definitions", len(armorDefs)))
+	}
 	itemDefs = merge(itemDefs, armorDefs)
 	file.Close()
 
 	file, _ = files.Open(path.Join(itemDir, "weapons.rec"))
 	weaponDefs := ReadItemDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d weapon definitions", len(weaponDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d weapon definitions", len(weaponDefs)))
+	}
 	itemDefs = merge(itemDefs, weaponDefs)
 	file.Close()
 
 	file, _ = files.Open(path.Join(itemDir, "misc.rec"))
 	throwableDefs := ReadItemDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d misc. definitions", len(throwableDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d misc. definitions", len(throwableDefs)))
+	}
 	itemDefs = merge(itemDefs, throwableDefs)
 	file.Close()
 
 	file, _ = files.Open(path.Join(itemDir, "accessory.rec"))
 	accessoryDefs := ReadItemDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d accessory definitions", len(accessoryDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d accessory definitions", len(accessoryDefs)))
+	}
 	itemDefs = merge(itemDefs, accessoryDefs)
 	file.Close()
 
 	file, _ = files.Open(path.Join(itemDir, "light.rec"))
 	lightDefs := ReadItemDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d light definitions", len(lightDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d light definitions", len(lightDefs)))
+	}
 	itemDefs = merge(itemDefs, lightDefs)
 	file.Close()
 
 	file, _ = files.Open(path.Join(itemDir, "potions.rec"))
 	potionDefs := ReadItemDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d potion definitions", len(potionDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d potion definitions", len(potionDefs)))
+	}
 	itemDefs = merge(itemDefs, potionDefs)
 	file.Close()
 
 	file, _ = files.Open(path.Join(itemDir, "scrolls.rec"))
 	scrollDefs := ReadItemDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d scroll definitions", len(scrollDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d scroll definitions", len(scrollDefs)))
+	}
 	itemDefs = merge(itemDefs, scrollDefs)
 	file.Close()
 
 	file, _ = files.Open(path.Join(enemyDir, "enemies.rec"))
 	enemyDefs := ReadEnemyDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d enemy definitions", len(enemyDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d enemy definitions", len(enemyDefs)))
+	}
 	file.Close()
 
 	file, _ = files.Open(path.Join(enemyDir, "unique_enemies.rec"))
 	uniquEnemyDefs := ReadEnemyDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d unique enemy definitions", len(uniquEnemyDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d unique enemy definitions", len(uniquEnemyDefs)))
+	}
 	file.Close()
 
 	file, _ = files.Open(path.Join(effectsDir, "untargeted.rec"))
 	untargetedDefs := ReadUntargetedDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d untargeted effect definitions", len(untargetedDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d untargeted effect definitions", len(untargetedDefs)))
+	}
 	file.Close()
 
 	file, _ = files.Open(path.Join(effectsDir, "targeted.rec"))
 	targetedDefs := ReadTargetedDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d targeted effect definitions", len(targetedDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d targeted effect definitions", len(targetedDefs)))
+	}
 	file.Close()
 
 	file, _ = files.Open(path.Join(otherDir, "stores.rec"))
 	vendorDefs := ReadVendorDefinitions(file)
-	println(fmt.Sprintf("Loaded %d store definitions", len(vendorDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d store definitions", len(vendorDefs)))
+	}
 	file.Close()
 
 	file, _ = files.Open(path.Join(otherDir, "classes.rec"))
 	classDefs := ReadClassDefinitions(file)
-	println(fmt.Sprintf("Loaded %d class definitions", len(classDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d class definitions", len(classDefs)))
+	}
 	file.Close()
 
 	file, _ = files.Open(path.Join(itemDir, "unique_items.rec"))
 	uniqueItemDefs := ReadItemDefinitions(file, logErr)
-	println(fmt.Sprintf("Loaded %d unique item definitions", len(uniqueItemDefs)))
+	if printDefLoad {
+		println(fmt.Sprintf("Loaded %d unique item definitions", len(uniqueItemDefs)))
+	}
 	file.Close()
 
 	return DataContainer{

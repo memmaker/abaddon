@@ -15,4 +15,6 @@ type Object interface {
 	ActorWalkedOn(actor *Actor, startAnimating func() bool)
 	ActorBumpedInto(actor *Actor, startAnimating func() bool)
 	Name() string
+	DamageReceived(amount int)
+	IsConductor() bool
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/inancgumus/screen"
 	"image/color"
 	_ "image/png"
 	"log"
@@ -22,6 +21,7 @@ import (
 	"rpg/gui"
 	"rpg/osr"
 	"rpg/renderer"
+	"rpg/tcontrol"
 	"rpg/util"
 	"strconv"
 	"strings"
@@ -46,122 +46,84 @@ func main() {
 		argCmd := strings.ToLower(os.Args[1])
 		switch argCmd {
 		case "loot":
-			theGame, _ := createGameAndUIContext()
+			theGame, _ := createGameAndUIContext("")
 			genLoot(theGame)
 		case "dun_gen":
 			maptest()
 		case "ascii":
-			runGameWithConsole(createGameAndUIContext())
+			runGameWithConsole(createGameAndUIContext(""))
 		case "list":
-			theGame, _ := createGameAndUIContext()
+			theGame, _ := createGameAndUIContext("")
 			dumpGameData(theGame.GetGameData())
 		case "create":
-			theGame, _ := createGameAndUIContext()
+			theGame, _ := createGameAndUIContext("")
 			startCreator(theGame.GetGameData())
 		case "osr":
 			osrSim()
-		case "7drl":
-			showTitleScreen()
+		case "development":
+			runGameWithEbiten(createGameAndUIContext("Dev"))
 		case "validate":
 			return
 		}
 	} else {
-		runGameWithEbiten(createGameAndUIContext())
+		showTitleScreen()
 	}
 }
 
 func showTitleScreen() {
-	logoFile := util.MustOpenReader(path.Join("assets","logo.txt"))
-	defer logoFile.Close()
-	//reader := bufio.NewReader(logoFile)
-	scanner := bufio.NewScanner(logoFile)
-	logoHeight := 0
-	logoWidth := 0
-	var logoLines []string
-	for scanner.Scan() {
-		line := scanner.Text()
-		logoLines = append(logoLines, line)
-		logoHeight++
-		logoWidth = max(logoWidth, len(line))
-	}
+	print("Who are you? ")
+	// keyboard input
+	reader := bufio.NewReader(os.Stdin)
+	playerName, _ := reader.ReadString('\n')
 
-	s, _ := tcell.NewScreen()
-	s.Init()
-	s.Clear()
-	w, h := s.Size()
-
-	// center logo
 	logoStartY := 3
-	for y := 0; y < logoHeight; y++ {
-		line := logoLines[y]
-		for x := 0; x < len(line); x++ {
-			s.SetContent((w-logoWidth)/2+x, logoStartY+y, rune(line[x]), nil, tcell.StyleDefault)
-		}
-	}
+	logo := util.ReadAllLines(path.Join("assets","logo_7drl.txt"))
+	logoHeight := len(logo)
+
+	tScreen := tcontrol.NewScreen()
+	_, h := tScreen.Size()
+	tScreen.PrintCentered(logoStartY, tcell.StyleDefault, logo)
 
 	lineAfterLogo := logoStartY + logoHeight + 1
-	credits := "a game by Felix Ruzzoli"
-	centeredCredits := (w - len(credits)) / 2
-	for x, c := range credits {
-		s.SetContent(centeredCredits+x, lineAfterLogo, c, nil, tcell.StyleDefault)
-	}
+	credits := "a 7 day roguelike by Felix Ruzzoli"
+	tScreen.PrintCentered(lineAfterLogo, tcell.StyleDefault, []string{credits})
 
 	// center prompt vertically
 	promptStartY := ((h - 1) / 2) + 2
-	prompt := "Do you want graphics? (y/n)"
-	centeredPrompt := (w - len(prompt)) / 2
-	for x, c := range prompt {
-		s.SetContent(centeredPrompt+x, promptStartY, c, nil, tcell.StyleDefault)
-	}
-	s.ShowCursor(centeredPrompt + len(prompt), promptStartY)
-	s.SetCursorStyle(tcell.CursorStyleBlinkingUnderline)
-	s.Show()
-	graphics := false
-	outerloop:
-	for event := s.PollEvent(); event != nil; event = s.PollEvent() {
-		if ev, ok := event.(*tcell.EventKey); ok {
-			if ev.Key() == tcell.KeyRune {
-				switch ev.Rune() {
-				case 'y':
-					fallthrough
-				case 'Y':
-					graphics = true
-					break outerloop
-				case 'n':
-					fallthrough
-				case 'N':
-					graphics = false
-					break outerloop
-				}
-			}
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	s.Clear()
-	s.Fini()
+	helpMsg := "Press F1 during play for help"
+	anyKey := "[Press any key to start]"
+	tScreen.PrintCentered(promptStartY, tcell.StyleDefault, []string{helpMsg})
+	tScreen.PrintCentered(promptStartY+2, tcell.StyleDefault, []string{anyKey})
+
+	tScreen.Show()
+	graphics := true
+
+	tScreen.WaitForKey()
+
+	tScreen.Clear()
+	tScreen.Fini()
+
 	if graphics {
-		runGameWithEbiten(createGameAndUIContext())
+		runGameWithEbiten(createGameAndUIContext(playerName))
 	} else {
-		runGameWithConsole(createGameAndUIContext())
+		runGameWithConsole(createGameAndUIContext(playerName))
 	}
 
-	screen.Clear()
-	screen.MoveTopLeft()
+	endMessage := util.ReadAllLines(path.Join("assets", "endMessage_7drl.txt"))
 
-	messageFile := util.MustOpenReader(path.Join("assets","endMessage.txt"))
-	defer messageFile.Close()
-	//reader := bufio.NewReader(logoFile)
-	msgScanner := bufio.NewScanner(messageFile)
-	for msgScanner.Scan() {
-		line := msgScanner.Text()
-		println(line)
-	}
+	tScreen = tcontrol.NewScreen()
+	tScreen.Clear()
+	tScreen.PrintAt(0, 0, endMessage)
+	tScreen.Show()
+	tScreen.WaitForKey()
+	tScreen.Clear()
+	tScreen.Fini()
 }
 
-func createGameAndUIContext() (*game.GameInstance, common.UIContext) {
+func createGameAndUIContext(playerName string) (*game.GameInstance, common.UIContext) {
 	userConfig := common.NewConfigurationFromRecFile("config.rec")
 	startInfos := common.StartInfo{
-		Title:       "RPG",
+		Title:       "Abaddon",
 		ScreenSize:  userConfig.WindowSize,
 		TileScale:   4.0,
 		LDTKMapFile: "assets/maps.ldtk",
@@ -171,6 +133,7 @@ func createGameAndUIContext() (*game.GameInstance, common.UIContext) {
 		},
 		UserConfiguration: userConfig,
 		FileSystem: files.GetFileSystem(),
+		PlayerName: playerName,
 	}
 	theGame := game.NewGameInstance(startInfos, NewDummyUI())
 	uiContext := common.UIContext{
@@ -351,7 +314,7 @@ func runGameWithConsole(theGame *game.GameInstance, context common.UIContext) {
 
 	terminationCode := 0
 	loopConfig := util.LoopConfig{
-		TargetFPS:        30,
+		TargetFPS:        5,
 		IdleThreshold:    5,
 		CurrentTimeFunc:  func() float64 { return float64(time.Now().UnixNano()) * 1e-9 },
 		ProcessInputFunc: con.HandleInput,
@@ -387,7 +350,7 @@ func runGameWithEbiten(theGame *game.GameInstance, context common.UIContext) {
 
 	screenSize := uiController.GetDeviceIndependentScreenSize()
 
-	ebiten.SetWindowTitle("Lux Aeterna")
+	ebiten.SetWindowTitle("Abaddon")
 	ebiten.SetWindowSize(screenSize.X, screenSize.Y)
 	ebiten.SetScreenClearedEveryFrame(true)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)

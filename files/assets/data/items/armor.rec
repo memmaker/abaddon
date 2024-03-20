@@ -3,7 +3,7 @@
 
 name: Pair of Soft Leather Boots
 internal_name: soft_leather_boots
-icon: 355
+icon: 359
 dlvl: 1
 cost: 7
 max_level: 4
@@ -15,7 +15,7 @@ throw_chance_to_break: 0.05
 
 name: Pair of Hard Leather Boots
 internal_name: hard_leather_boots
-icon: 356
+icon: 362
 dlvl: 1
 cost: 12
 max_level: 4
@@ -38,7 +38,7 @@ throw_chance_to_break: 0.05
 
 name: Cloak
 internal_name: cloak
-icon: 416
+icon: 417
 dlvl: 1
 cost: 3
 max_level: 3
@@ -66,7 +66,7 @@ armor_class: 1
 
 name: Robe
 internal_name: robe
-icon: 636
+icon: 637
 dlvl: 1
 cost: 4
 max_level: 3
@@ -76,7 +76,7 @@ armor_class: 1
 
 name: Ceremonial Robe
 internal_name: ceremonial_robe
-icon: 609
+icon: 610
 dlvl: 1
 cost: 16
 max_level: 3
@@ -84,9 +84,9 @@ category: armor
 armor_type: cuirass
 armor_class: 1
 
-name: Partial Leather Armour
+name: Rawhide
 internal_name: partial_leather_armour
-icon: 227
+icon: 716
 dlvl: 1
 cost: 60
 max_level: 4
@@ -98,7 +98,7 @@ throw_chance_to_break: 0.05
 
 name: Full Leather Armour
 internal_name: full_leather_armour
-icon: 229
+icon: 715
 dlvl: 1
 cost: 20
 max_level: 4
@@ -168,7 +168,7 @@ throw_chance_to_break: 0.05
 
 name: Set of Leather Gloves
 internal_name: leather_gloves
-icon: 384
+icon: 389
 dlvl: 1
 cost: 3
 max_level: 4
@@ -401,3 +401,4 @@ weapon_damage: 2-6
 weapon_speed: 1.1
 throw_damage: 2-3
 throw_chance_to_break: 0.05
+

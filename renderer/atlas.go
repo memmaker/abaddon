@@ -24,6 +24,10 @@ func (a TextureAtlas) GetTileSize() geometry.Point {
 	return geometry.Point{X: a.tileSizeX, Y: a.tileSizeY}
 }
 
+func (a TextureAtlas) IsValid() bool {
+	return a.imageData != nil && a.tileSizeX > 0 && a.tileSizeY > 0
+}
+
 func NewTextureAtlas(imageFilename string, tileSizeX, tileSizeY int) TextureAtlas {
 	return TextureAtlas{
 		imageData: ebiten.NewImageFromImage(mustLoadImage(imageFilename)),

@@ -10,6 +10,7 @@ type Animation interface {
 	Tick()
 	Draw(renderer TileRenderer)
 	Cancel()
+	AudioCue() string
 }
 type TileRenderer interface {
 	DrawOnMap(mapPos geometry.Point, icon int32, color color.Color)

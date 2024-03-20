@@ -101,3 +101,12 @@ func (t *TimeKeeper) GetBeingsByFilter(keep func(being TimedBeing) bool) []Timed
 	}
 	return result
 }
+
+func (t *TimeKeeper) Remove(being TimedBeing) {
+	for i := len(t.timed) - 1; i >= 0; i-- {
+		if t.timed[i] == being {
+			t.removeAtIndex(i)
+			return
+		}
+	}
+}

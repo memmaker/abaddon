@@ -158,16 +158,62 @@ func (d *Broker) removeHook(hook ActionHook, hooks map[ActionName][]ActionHook) 
 		}
 	}
 }
-func (d *Broker) AddAnimation(animation Animation) {
+
+func (d *Broker) AddAndRunAnimation(animation Animation) {
 	d.runningAnimations = append(d.runningAnimations, animation)
+	if animation.AudioCue() != "" {
+		d.context.AudioPlayer.PlayCue(animation.AudioCue())
+	}
 }
 func (d *Broker) startAnimations(animations []Animation) {
 	for _, animation := range animations {
 		switch typedAnimation := animation.(type) {
 		case *MovementAnimation:
-			d.queueMovementAnimation(typedAnimation)
+			d.StartMovementAnimation(typedAnimation)
 		default:
-			d.runningAnimations = append(d.runningAnimations, animation)
+			d.AddAndRunAnimation(animation)
+		}
+	}
+}
+
+func (d *Broker) StartMovementAnimation(newAnimation *MovementAnimation) {
+	// idea: we will replace the existing with one that moves further
+	if oldAnimation, ok := d.movementAnimations[newAnimation.GetActor()]; ok {
+		if newAnimation.IsForThePlayer() {
+			oldAnimation.Cancel()
+			d.movementAnimations[newAnimation.GetActor()] = newAnimation
+		} else {
+			mergedAnimation := oldAnimation.Merge(newAnimation)
+			d.movementAnimations[newAnimation.GetActor()] = mergedAnimation
+		}
+	} else {
+		d.movementAnimations[newAnimation.GetActor()] = newAnimation
+	}
+	if newAnimation.AudioCue() != "" {
+		d.context.AudioPlayer.PlayCue(newAnimation.AudioCue())
+	}
+}
+
+func (d *Broker) GetAnimation(filter func(anim Animation) bool) (Animation, bool) {
+	for _, animation := range d.runningAnimations {
+		if filter(animation) {
+			return animation, true
+		}
+	}
+	for _, animation := range d.movementAnimations {
+		if filter(animation) {
+			return animation, true
+		}
+	}
+	return nil, false
+}
+
+func (d *Broker) CancelAnimationsByFilter(filter func(anim Animation) bool) {
+	for i := len(d.runningAnimations) - 1; i >= 0; i-- {
+		animation := d.runningAnimations[i]
+		if filter(animation) {
+			animation.Cancel()
+			d.runningAnimations = append(d.runningAnimations[:i], d.runningAnimations[i+1:]...)
 		}
 	}
 }
@@ -186,46 +232,25 @@ func (d *Broker) CancelAllAnimations() {
 func (d *Broker) ClearQueuedActions(shouldBeRemoved func(action Action) bool) {
 	for i := len(d.queuedActions) - 1; i >= 0; i-- {
 		actions := d.queuedActions[i]
-		for _, action := range actions {
+		//for _, action := range actions {
+		for v := len(actions) - 1; v >= 0; v-- {
+			action := actions[v]
 			if shouldBeRemoved(action) {
-				actions = append(actions[:i], actions[i+1:]...)
+				if v == len(actions)-1 {
+					actions = actions[:v]
+				} else {
+					actions = append(actions[:v], actions[v+1:]...)
+				}
 			}
 		}
 		if len(actions) == 0 {
-			d.queuedActions = append(d.queuedActions[:i], d.queuedActions[i+1:]...)
+			if i == len(d.queuedActions)-1 {
+				d.queuedActions = d.queuedActions[:i]
+			} else {
+				d.queuedActions = append(d.queuedActions[:i], d.queuedActions[i+1:]...)
+			}
 		} else {
 			d.queuedActions[i] = actions
 		}
 	}
-}
-
-func (d *Broker) queueMovementAnimation(newAnimation *MovementAnimation) {
-	// idea: we will replace the existing with one that moves further
-
-	if oldAnimation, ok := d.movementAnimations[newAnimation.GetActor()]; ok {
-		if newAnimation.IsForThePlayer() {
-			oldAnimation.Cancel()
-			d.movementAnimations[newAnimation.GetActor()] = newAnimation
-		} else {
-			mergedAnimation := oldAnimation.Merge(newAnimation)
-			d.movementAnimations[newAnimation.GetActor()] = mergedAnimation
-		}
-
-	} else {
-		d.movementAnimations[newAnimation.GetActor()] = newAnimation
-	}
-}
-
-func (d *Broker) GetAnimation(filter func(anim Animation) bool) (Animation, bool) {
-	for _, animation := range d.runningAnimations {
-		if filter(animation) {
-			return animation, true
-		}
-	}
-	for _, animation := range d.movementAnimations {
-		if filter(animation) {
-			return animation, true
-		}
-	}
-	return nil, false
 }

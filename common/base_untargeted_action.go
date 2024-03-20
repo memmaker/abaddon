@@ -34,12 +34,14 @@ func NewUntargetedAction(name string, icon int32) *UntargetedAction {
 func (a *UntargetedAction) GetDescription() []util.LabelText {
 	var fullDescription []util.LabelText
 	effectDescription := a.effect.GetDescription()
+	fullDescription = append(fullDescription, util.LabelTextFromString(""))
 	fullDescription = append(fullDescription, effectDescription...)
 
 	if a.activationDelayInTurns > 0 {
+		fullDescription = append(fullDescription, util.LabelTextFromString(""))
 		fullDescription = append(fullDescription,
 			util.LabelText{
-				Text:          fmt.Sprintf("Delayed: Will activate after %d turns", a.activationDelayInTurns),
+				Text:          fmt.Sprintf("Delayed: Will activate after %d turns", a.turnsUntilRemoval),
 				TextColor:     defs.DarkTextColor,
 				UseColorCodes: false,
 				//TextWithColorCodes: nil,
@@ -77,7 +79,7 @@ func (a *UntargetedAction) Turn() {
 }
 
 func (a *UntargetedAction) IsDelayed() bool {
-	return a.activationDelayInTurns > 0
+	return a.turnsUntilRemoval > 0
 }
 
 func (a *UntargetedAction) Name() string {

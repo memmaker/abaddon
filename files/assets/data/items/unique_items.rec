@@ -13,7 +13,6 @@ weapon_speed: 0.95
 throw_damage: 1-8
 throw_chance_to_break: 0.7
 
-
 name: Mace of Disruption
 internal_name: mace_of_destruction
 icon: 632
@@ -26,6 +25,17 @@ weapon_speed: 1
 throw_damage: 2-6
 throw_chance_to_break: 0.25
 
+name: Vengeance
+internal_name: sword_of_vengeance
+icon: 630
+dlvl: 8
+cost: 4500
+category: weapon
+weapon_type: sword
+weapon_damage: 1d2
+weapon_speed: 1
+throw_damage: 1-6
+throw_chance_to_break: 0.0
 
 name: Blade of Chaos
 internal_name: blade_of_chaos
@@ -52,7 +62,6 @@ armor_class: 1
 throw_damage: 0
 throw_chance_to_break: 0.05
 
-
 name: Shield of Deflection
 internal_name: shield_of_deflection
 icon: 689
@@ -68,7 +77,6 @@ weapon_damage: 3-7
 weapon_speed: 1
 throw_damage: 2-3
 throw_chance_to_break: 0.05
-
 
 name: The Star-Glass
 internal_name: light_star_glass
@@ -207,7 +215,7 @@ throw_damage: 1-4
 
 name: Malleus Maleficarum
 internal_name: malleus_maleficarum
-icon: 498
+icon: 526
 dlvl: 5
 cost: 7
 max_level: 12
@@ -230,3 +238,4 @@ weapon_damage: 3-12
 weapon_speed: 0.9
 throw_damage: 1-4
 throw_chance_to_break: 0.03
+

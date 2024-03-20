@@ -46,11 +46,7 @@ func (g *MapGenerator) GenerateMap(targetMap string, mapTemplates *ldtk.Project,
 	}
 
 	var generatedLayout *dungen.DungeonMap
-	if g.factory.state.IsStoryModeEnabled() {
-		generatedLayout = g.createStoryLayout(mapTemplates, dungeonDef.TemplateRules)
-	} else {
-		generatedLayout = g.createMegaDungeonLayout()
-	}
+	generatedLayout = g.createStoryLayout(mapTemplates, dungeonDef.TemplateRules)
 
 	//generatedLayout.Print()
 	genWidth, genHeight := generatedLayout.GetSize()
@@ -66,7 +62,7 @@ func (g *MapGenerator) GenerateMap(targetMap string, mapTemplates *ldtk.Project,
 
 	poiPositions := g.decorateRooms(emptyMap, generatedLayout, dungeonLevel)
 
-	g.addShrine(emptyMap, poiPositions, dungeonLevel)
+	g.addHazards(emptyMap, generatedLayout, poiPositions, dungeonLevel)
 
 	randomSource := g.randomSource
 	enemySpawnPos := make(map[geometry.Point]bool)
@@ -249,32 +245,38 @@ func (g *MapGenerator) addStairs(emptyMap *gridmap.GridMap[*Actor, *Item, Object
 		// remove the exit from the list of possible exits
 		stairPositions = append(stairPositions[:exitIndex], stairPositions[exitIndex+1:]...)
 
-		mapEntryPosition := entrance
-		emptyMap.SetTile(mapEntryPosition, ladderUpTile)
-		emptyMap.AddNamedLocation("ladder_up", mapEntryPosition)
+
 		dungeonLevel := levelDef.DungeonLevel
-		if dungeonLevel == 1 {
+
+		if dungeonLevel > 0 && dungeonLevel < 5 { // add ladder up
+			mapEntryPosition := entrance
+			emptyMap.SetTile(mapEntryPosition, ladderUpTile)
+			emptyMap.AddNamedLocation("ladder_up", mapEntryPosition)
 			emptyMap.AddTransitionAt(mapEntryPosition, gridmap.Transition{
-				TargetMap:      string(defs.LevelNameTown),
-				TargetLocation: "to_cathedral",
-			})
-		} else {
-			emptyMap.AddTransitionAt(mapEntryPosition, gridmap.Transition{
-				TargetMap:      defs.LevelNameFromDepth(dungeonLevel - 1),
+				TargetMap:      defs.LevelNameFromDepth(dungeonLevel + 1),
 				TargetLocation: "ladder_down",
 			})
+			transitionLocations = append(transitionLocations, mapEntryPosition)
+		}
+		// 6 = Town
+		// 5 = Cathedral (down only)
+		// 4 = Catacombs
+		// 3 = Caves
+		// 2 = Dungeon
+		// 1 = Hell (up only)
+		// 0 = Hell Town
+		if dungeonLevel > 1 && dungeonLevel < 6 { // add ladder down
+			mapExitPosition := exit
+			emptyMap.SetTile(mapExitPosition, ladderDownTile)
+			emptyMap.AddNamedLocation("ladder_down", mapExitPosition)
+
+			emptyMap.AddTransitionAt(mapExitPosition, gridmap.Transition{
+				TargetMap:      defs.LevelNameFromDepth(dungeonLevel - 1),
+				TargetLocation: "ladder_up",
+			})
+			transitionLocations = append(transitionLocations, mapExitPosition)
 		}
 
-		mapExitPosition := exit
-
-		emptyMap.SetTile(mapExitPosition, ladderDownTile)
-		emptyMap.AddNamedLocation("ladder_down", mapExitPosition)
-		emptyMap.AddTransitionAt(mapExitPosition, gridmap.Transition{
-			TargetMap:      defs.LevelNameFromDepth(dungeonLevel + 1),
-			TargetLocation: "ladder_up",
-		})
-
-		transitionLocations = append(transitionLocations, mapEntryPosition, mapExitPosition)
 
 		slices.SortStableFunc(stairPositions, func(i, j geometry.Point) int {
 			iDist := i.ManhattanDistanceTo(entrance) + i.ManhattanDistanceTo(exit)
@@ -434,6 +436,131 @@ func (g *MapGenerator) spawnCompanions(emptyMap *gridmap.GridMap[*Actor, *Item, 
 	}
 }
 
+func (g *MapGenerator) addHazards(emptyMap *gridmap.GridMap[*Actor, *Item, Object], layout *dungen.DungeonMap, poiPositions []geometry.Point, level int) {
+	// water, lava, chasms, spikes, barrels, oil
+	addHazards := []func(gridMap *gridmap.GridMap[*Actor, *Item, Object], room *dungen.DungeonRoom) {
+		g.addWater,
+		g.addLava,
+		g.addSpikes,
+		func(gridMap *gridmap.GridMap[*Actor, *Item, Object], room *dungen.DungeonRoom) {g.addHazardObjects(gridMap, room, g.factory.NewBarrel)},
+		//g.addOil,
+	}
+	if level > 1 { // only add chasms after level 1
+		addHazards = append(addHazards, g.addChasms)
+	}
+	for _, room := range layout.AllRooms() {
+		// how many hazards?
+		// which hazards?
+		if g.randomSource.Intn(3) != 0 { // 33% chance to contain hazards
+			continue
+		}
+		hazardCount := g.randomSource.Intn(len(addHazards))
+		randomIndices := g.randomSource.Perm(len(addHazards))
+		for i := 0; i < hazardCount; i++ {
+			addHazards[randomIndices[i]](emptyMap, room)
+		}
+	}
+}
+
+func (g *MapGenerator) addHazardObjects(gridMap *gridmap.GridMap[*Actor, *Item, Object], room *dungen.DungeonRoom, createObject func() Object) {
+	barrelCount := g.randomSource.Intn(5) + 1
+	barrelsPlaced := 0
+	roomTiles := room.GetAbsoluteRoomTiles()
+	randomOrder := g.randomSource.Perm(len(roomTiles))
+	for _, index := range randomOrder {
+		roomPos := roomTiles[index]
+		if room.IsConnectorPosition(roomPos) || gridMap.IsNextToTileWithSpecial(roomPos, gridmap.SpecialTileStairsDown) && gridMap.IsNextToTileWithSpecial(roomPos, gridmap.SpecialTileStairsUp) {
+			continue
+		}
+		if gridMap.IsEmptyNonSpecialFloor(roomPos) {
+			hazardObject := createObject()
+			barrelsPlaced++
+			gridMap.AddObject(hazardObject, roomPos)
+			if barrelsPlaced >= barrelCount {
+				break
+			}
+		}
+	}
+}
+
+func (g *MapGenerator) addSpikes(gridMap *gridmap.GridMap[*Actor, *Item, Object], room *dungen.DungeonRoom) {
+	startPos, found := getRandomEmptyRoomPos(gridMap, room)
+	if !found {
+		return
+	}
+	size := g.randomSource.Intn(5) + 1
+	lavaLocations := gridMap.GetDijkstraMap(startPos, size, func(pos geometry.Point) bool {
+		return gridMap.IsEmptyNonSpecialFloor(pos)
+	})
+
+	for pos, _ := range lavaLocations {
+		gridMap.SetTile(pos, defs.SpikeTile)
+	}
+}
+
+func (g *MapGenerator) addChasms(gridMap *gridmap.GridMap[*Actor, *Item, Object], room *dungen.DungeonRoom) {
+	startPos, found := getRandomEmptyRoomPos(gridMap, room)
+	if !found {
+		return
+	}
+	size := g.randomSource.Intn(5) + 1
+	chasmLocs := gridMap.GetDijkstraMap(startPos, size, func(pos geometry.Point) bool {
+		return gridMap.IsEmptyNonSpecialFloor(pos) && !gridMap.IsNextToTileWithSpecial(pos, gridmap.SpecialTileStairsDown) && !gridMap.IsNextToTileWithSpecial(pos, gridmap.SpecialTileStairsUp)
+	})
+
+	for pos, _ := range chasmLocs {
+		gridMap.SetTile(pos, defs.ChasmTile)
+	}
+}
+func (g *MapGenerator) addLava(gridMap *gridmap.GridMap[*Actor, *Item, Object], room *dungen.DungeonRoom) {
+	startPos, found := getRandomEmptyRoomPos(gridMap, room)
+	if !found {
+		return
+	}
+	size := g.randomSource.Intn(5) + 1
+	lavaLocations := gridMap.GetDijkstraMap(startPos, size, func(pos geometry.Point) bool {
+		return gridMap.IsEmptyNonSpecialFloor(pos)
+	})
+
+	for pos, _ := range lavaLocations {
+		gridMap.SetTile(pos, defs.LavaTile)
+	}
+}
+
+func (g *MapGenerator) addWater(gridMap *gridmap.GridMap[*Actor, *Item, Object], room *dungen.DungeonRoom) {
+	startPos, found := getRandomEmptyRoomPos(gridMap, room)
+	if !found {
+		return
+	}
+	size := g.randomSource.Intn(5) + 1
+	lavaLocations := gridMap.GetDijkstraMap(startPos, size, func(pos geometry.Point) bool {
+		return gridMap.IsEmptyNonSpecialFloor(pos)
+	})
+
+	for pos, _ := range lavaLocations {
+		gridMap.SetTile(pos, defs.WaterTile)
+	}
+}
+
+func getRandomEmptyRoomPos(gridMap *gridmap.GridMap[*Actor, *Item, Object], room *dungen.DungeonRoom) (emptyPos geometry.Point, found bool) {
+	roomTiles := room.GetAbsoluteRoomTiles()
+	randomOrder := rand.Perm(len(roomTiles))
+	for _, index := range randomOrder {
+		roomPos := roomTiles[index]
+		if room.IsConnectorPosition(roomPos) {
+			continue
+		}
+		if !gridMap.IsEmptyNonSpecialFloor(roomPos) {
+			continue
+		}
+		if gridMap.IsNextToTileWithSpecial(roomPos, gridmap.SpecialTileStairsUp) || gridMap.IsNextToTileWithSpecial(roomPos, gridmap.SpecialTileStairsDown) {
+			continue
+		}
+		return roomPos, true
+	}
+	return geometry.Point{}, false
+}
+
 func MapTileFromLDTK(tileSet *ldtk.Tileset, layer *ldtk.Layer, tile *ldtk.Tile) (geometry.Point, gridmap.Tile) {
 	posX, posY := layer.ToGridPosition(tile.Position[0], tile.Position[1])
 	pos := geometry.Point{X: posX, Y: posY}
@@ -441,17 +568,20 @@ func MapTileFromLDTK(tileSet *ldtk.Tileset, layer *ldtk.Layer, tile *ldtk.Tile) 
 
 	walkable := !enums.Contains("IsBlockingMovement")
 	transparent := !enums.Contains("IsBlockingView")
-	isDamaging := enums.Contains("IsDamaging")
+	isSpikes := enums.Contains("IsSpikes")
 	isWater := enums.Contains("IsWater")
 	isChasm := enums.Contains("IsChasm")
+	isLava := enums.Contains("IsLava")
 	specialTile := gridmap.SpecialTileNone
 
 	if isWater {
 		specialTile = gridmap.SpecialTileWater
-	} else if isDamaging {
-		specialTile = gridmap.SpecialTileDamaging
+	} else if isSpikes {
+		specialTile = gridmap.SpecialTileSpikes
 	} else if isChasm {
 		specialTile = gridmap.SpecialTileChasm
+	} else if isLava {
+		specialTile = gridmap.SpecialTileLava
 	}
 
 	tileType := gridmap.Tile{

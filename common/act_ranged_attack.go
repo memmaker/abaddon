@@ -35,9 +35,6 @@ func NewRangedAttackAction(source Cause, attacker *Actor, targetPos geometry.Poi
 }
 
 func (d *RangedAttackAction) Execute(context ActionContext) []Action {
-	audio := context.AudioPlayer
-	audio.PlayCue("bow_fire")
-
 	currentMap := context.GameState.GetMap()
 	var actions []Action
 
@@ -84,13 +81,13 @@ func (d *RangedAttackAction) Execute(context ActionContext) []Action {
 }
 
 func RollRangedDamage(attacker, defender *Actor, damageMultiplier float64) int {
-	damageRoll := GetRangedDamageRoll(attacker)
+	damageRoll := GetRangedDamageRoll(attacker, defender.GetInternalName())
 
 	return CalculateRangedDamage(damageRoll, damageMultiplier, attacker, defender)
 }
 
 func CalculateRangedDamage(damageRoll int, damageMultiplier float64, attacker, defender *Actor) int {
-	damageMultiplier *= GetWeaponQualityFactor(attacker)
+	//damageMultiplier *= GetWeaponQualityFactor(attacker)
 
 	damage := int(float64(damageRoll) * damageMultiplier)
 	armorPenetration := GetArmorPenetrationOfEquippedRangedWeapon(attacker)
@@ -100,10 +97,8 @@ func CalculateRangedDamage(damageRoll int, damageMultiplier float64, attacker, d
 	blockedDamage := int(math.Floor(float64(damage) * defenderADR))
 
 	if defender.GetEquipment().HasShieldEquipped() {
-		defenderDex := defender.GetStats().GetAttribute(stats.Dexterity)
-		dndStyleModifier := defaultModifierPattern(defenderDex)
 		shield := defender.GetEquipment().GetShield()
-		shieldAC := max(1, shield.GetArmorStats().GetTotalArmorClass() + dndStyleModifier)
+		shieldAC := max(1, shield.GetArmorStats().GetTotalArmorClass())
 		if shieldAC > blockedDamage && rand.Float64() > 0.5 {
 			blockedDamage = shieldAC
 		}
@@ -114,8 +109,8 @@ func CalculateRangedDamage(damageRoll int, damageMultiplier float64, attacker, d
 	return damage
 }
 
-func GetRangedDamageRoll(attacker *Actor) int {
-	damageDice := attacker.GetDamageDice(RangedAttack)
+func GetRangedDamageRoll(attacker *Actor, enemyName string) int {
+	damageDice := attacker.GetDamageDice(RangedAttack, enemyName)
 	damageRoll := damageDice.Roll()
 	return damageRoll
 }
@@ -136,17 +131,8 @@ func CalculateRangedWeaponHitChance(attacker, defender *Actor) float64 {
 
 	dexModifier := 0.0
 
-	attackerDex := attacker.GetStats().GetAttribute(stats.Dexterity)
-	dndStyleModifier := defaultModifierPattern(attackerDex)
 	// dex modifier only applies in full to skill based ranged weapons
 	// => in particular, crossbows don't get the penalty part
-	if (rangedWeapon.IsBow() || rangedWeapon.IsSlingshot()) ||
-
-		rangedWeapon.IsCrossbow() && dndStyleModifier > 0 { // crossbows only get positive modifiers
-
-		dexModifier = 0.2 * float64(dndStyleModifier)
-	}
-
 	weaponStats := rangedWeapon.GetWeaponStats()
 	maxRange := float64(weaponStats.MaxRange)
 	accuracyAtMaxRange := weaponStats.AccuracyAtMaxRange

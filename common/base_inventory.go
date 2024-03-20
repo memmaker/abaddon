@@ -179,16 +179,6 @@ func (i *Inventory) AsColorCodedStrings() []string {
 	}
 	return asStrings
 }
-
-func (i *Inventory) HasLightSource() bool {
-	for _, item := range i.items {
-		if item.IsLightSource() {
-			return true
-		}
-	}
-	return false
-}
-
 func (i *Inventory) IsValidLetter(r rune) bool {
 	return i.GetItemByLetter(r) != nil
 }
@@ -229,29 +219,6 @@ func (i *Inventory) changed() {
 	}
 }
 
-func (i *Inventory) RepairAll() {
-	for _, item := range i.items {
-		item.Repair()
-	}
-}
-
-func (i *Inventory) HasFood() bool {
-	for _, item := range i.items {
-		if item.IsFood() {
-			return true
-		}
-	}
-	return false
-}
-
-func (i *Inventory) UseFood() {
-	for _, item := range i.items {
-		if item.IsFood() {
-			i.Remove(item)
-			return
-		}
-	}
-}
 
 func SortInventory(stacks []InventoryStack) {
 	slices.SortStableFunc(stacks, func(i, j InventoryStack) int {

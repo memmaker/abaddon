@@ -22,6 +22,8 @@ type BasicLabel struct {
 	borderPadding  geometry.Point
 	bounds         geometry.Rect
 	canBeClosed    bool
+	pageTwo        []util.LabelText
+	onClose        func()
 }
 
 func (i *BasicLabel) OnCommand(command CommandType) bool {
@@ -29,7 +31,7 @@ func (i *BasicLabel) OnCommand(command CommandType) bool {
 	case PlayerCommandConfirm:
 		fallthrough
 	case PlayerCommandCancel:
-		i.shouldClose = true
+		i.close()
 		return true
 
 	}
@@ -39,7 +41,7 @@ func (i *BasicLabel) OnCommand(command CommandType) bool {
 func (i *BasicLabel) OnMouseClicked(button ebiten.MouseButton, x int, y int) bool {
 	mousePos := geometry.Point{X: x, Y: y}
 	if i.canBeClosed && (!i.bounds.Contains(mousePos) || button == ebiten.MouseButtonRight) {
-		i.shouldClose = true
+		i.close()
 		return true
 	}
 	return false
@@ -184,10 +186,23 @@ func NewTextLabel(uiController *UIController, topLeftPositionAsOffsetFromTopRigh
 	}
 	return b
 }
-func NewCenteredTextLabel(uiController *UIController) *BasicLabel {
+func NewLeftTextLabel(uiController *UIController) *BasicLabel {
 	b := &BasicLabel{
 		uiController:   uiController,
 		centered:       false,
+		drawBackground: true,
+	}
+	b.layoutFunc = func() {
+		b.posInfo = SizeNeededForText(b.uiController.GetRenderer().MeasureString, b.textLines, 10)
+		b.layoutCentered()
+		b.bounds = geometry.NewRect(b.topLeft.X, b.topLeft.Y, b.topLeft.X+b.posInfo.SizeInPixels.X, b.topLeft.Y+b.posInfo.SizeInPixels.Y)
+	}
+	return b
+}
+func NewCenteredTextLabel(uiController *UIController) *BasicLabel {
+	b := &BasicLabel{
+		uiController:   uiController,
+		centered:       true,
 		drawBackground: true,
 	}
 	b.layoutFunc = func() {
@@ -283,4 +298,27 @@ func (i *BasicLabel) SetCanBeClosed(value bool) {
 
 func (i *BasicLabel) GetBounds() geometry.Rect {
 	return i.bounds
+}
+
+func (i *BasicLabel) SetPageTwo(texts []util.LabelText) {
+	i.pageTwo = texts
+}
+
+func (i *BasicLabel) close() {
+	if len(i.pageTwo) > 0 {
+		i.textLines = i.pageTwo
+		i.pageTwo = []util.LabelText{}
+		i.Layout()
+		return
+	}
+	if !i.shouldClose {
+		i.shouldClose = true
+		if i.onClose != nil {
+			i.onClose()
+		}
+	}
+}
+
+func (i *BasicLabel) SetOnClose(onClose func()) {
+	i.onClose = onClose
 }

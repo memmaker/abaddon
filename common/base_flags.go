@@ -1,7 +1,7 @@
 package common
 
 import (
-	"fmt"
+	"rpg/defs"
 )
 
 type Flags struct {
@@ -35,11 +35,7 @@ func (f *Flags) Increment(flag string) {
 func (f *Flags) AsStrings() []string {
 	result := make([]string, 0)
 	for flag, value := range f.flags {
-		if value >= 0 {
-			result = append(result, fmt.Sprintf("%s for %d turns", flag, value))
-		} else {
-			result = append(result, flag)
-		}
+		result = append(result, defs.NiceNameForStatusEffectWithTurns(flag, value))
 	}
 	return result
 }

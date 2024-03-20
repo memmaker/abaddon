@@ -7,18 +7,26 @@ import (
 )
 
 type ExplodingObject struct {
-	*BaseTimedBeing
-	position             geometry.Point
-	icon                 int32
-	frameCount           int
+	position       geometry.Point
+	icon           int32
+	frameCount     int
+	queueExplosion func(geometry.Point)
+}
+
+func (d *ExplodingObject) Turn() {
+
 }
 
 func (d *ExplodingObject) Name() string {
-	return "fire"
+	return "barrel"
 }
 
 func (d *ExplodingObject) ActorBumpedInto(actor *Actor, startAnimating func() bool) {
 	d.explode()
+}
+
+func (d *ExplodingObject) IsConductor() bool {
+	return false
 }
 
 func (d *ExplodingObject) ActorWalkedOn(actor *Actor, startAnimating func() bool) {
@@ -53,7 +61,7 @@ func (d *ExplodingObject) IsPassableForProjectile() bool {
 }
 
 func (d *ExplodingObject) explode() {
-
+	d.queueExplosion(d.position)
 }
 
 /*
@@ -62,10 +70,11 @@ RemoveEnergy(used int)
 IsAlive() bool
 GetBaseSpeed() int
 */
-func NewExplodingBarrel(explosionAction *TargetedAction) *ExplodingObject {
+func NewExplodingBarrel(queueExplosion  func(point geometry.Point)) *ExplodingObject {
 	return &ExplodingObject{
-		BaseTimedBeing:    NewBaseTimedBeing(),
-		icon:              defs.IconEffectFireSmall,
-		frameCount:        2,
+		icon:              defs.IconBarrel,
+		frameCount:        1,
+		queueExplosion:    queueExplosion,
 	}
 }
+

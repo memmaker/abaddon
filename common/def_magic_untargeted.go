@@ -15,7 +15,7 @@ import (
 
 const (
 	ActionNameHealHealthAndMana UntargetedActionName = "heal_health_mana_full"
-	ActionNameHealHealth        UntargetedActionName = "heal_health"
+	ActionNameFirestarter       UntargetedActionName = "firestarter"
 	ActionNameBerserk           UntargetedActionName = "apply_berserk_self"
 	ActionNameApplyStatusSelf   UntargetedActionName = "apply_status_self"
 	ActionNameHealMana          UntargetedActionName = "heal_mana"
@@ -89,6 +89,9 @@ func (g *Factory) getReplicate(args util.Arguments) UntargetedEffect {
 		keeper := g.getTimeKeeper()
 
 		keeper.AddTimed(clonedActor)
+		if user == g.state.GetPlayer() {
+			clonedActor.SetFollowLeader(user)
+		}
 		g.logError(fmt.Sprintf("A new %s is born!", clonedActor.Name()))
 	}
 	return UntargetedEffect{
@@ -138,7 +141,7 @@ func (g *Factory) getSpeedBuff(args util.Arguments) UntargetedEffect {
 	return UntargetedEffect{
 		Effect: effect,
 		Description: []util.LabelText{
-			util.LabelTextFromString(fmt.Sprintf("Buff speed for %d turns", turnCount)),
+			util.LabelTextFromString(fmt.Sprintf("Haste for %d turns", turnCount)),
 		},
 	}
 }
@@ -162,28 +165,6 @@ func RemoveTimedEffectsBySource(timekeeper *TimeKeeper, source EffectSource) {
 		}
 	}
 }
-
-func (g *Factory) getDamageBuff(args util.Arguments) UntargetedEffect {
-	intervalRange := stats.NewIntervalFromString(args.Get(0))
-	turnCount := args.GetInt(1)
-	effect := func(user *Actor, source EffectSource) {
-		modifier := defs.AddToBaseAttributeRandomly(g.randomSource, stats.DamageBonus, intervalRange.AsTuple())
-		modifier.StackID = string(source)
-		timedModifier := NewTimedModifier(string(ActionNameBuffDamage), user, modifier, turnCount)
-		timeKeeper := g.getTimeKeeper()
-
-		RemoveTimedEffectsBySource(timeKeeper, source)
-		timedModifier.Apply()
-		timeKeeper.AddTimed(timedModifier)
-		g.logError("You feel stronger!")
-	}
-	return UntargetedEffect{
-		Effect: effect,
-		Description: []util.LabelText{
-			util.LabelTextFromString(fmt.Sprintf("Buff damage for %d turns", turnCount)),
-		},
-	}
-}
 func (g *Factory) getEnchantWeapon(args util.Arguments) UntargetedEffect {
 	maxEnchantLevel := 3
 	effect := func(user *Actor, source EffectSource) {
@@ -199,6 +180,7 @@ func (g *Factory) getEnchantWeapon(args util.Arguments) UntargetedEffect {
 			}
 			weaponStats.Plus += 1
 			g.logError(fmt.Sprintf("Your [:darkText]%s[:white] glows [:blue]blue[:white] for a moment.", selectedItem.Name()))
+			g.audioPlayer.PlayCue("enchant")
 		}
 
 		if user == g.state.GetPlayer() {
@@ -235,6 +217,7 @@ func (g *Factory) getEnchantArmor(args util.Arguments) UntargetedEffect {
 			}
 			weaponStats.Plus += 1
 			g.logError(fmt.Sprintf("Your [:darkText]%s[:white] glows [:blue]blue[:white] for a moment.", selectedItem.Name()))
+			g.audioPlayer.PlayCue("enchant")
 		}
 
 		if user == g.state.GetPlayer() {
@@ -269,16 +252,14 @@ func (g *Factory) getAcquirement(args util.Arguments) UntargetedEffect {
 	return UntargetedEffect{
 		Effect: effect,
 		Description: []util.LabelText{
-			util.LabelTextFromString("Enchant armor protection"),
+			util.LabelTextFromString("Acquire one item from another realm of existence"),
 		},
 	}
 }
 func (g *Factory) getHealHealthAndMana(args util.Arguments) UntargetedEffect {
 	effect := func(user *Actor, source EffectSource) {
 		healHealthAction := NewChangeResourceAction(NewActorCause("Full Heal", user), user, stats.Health, float64(user.GetStats().GetAttribute(stats.MaxHealth)))
-		healManaAction := NewChangeResourceAction(NewActorCause("Full Heal", user), user, stats.Mana, float64(user.GetStats().GetAttribute(stats.MaxMana)))
 		g.actionBroker.Execute(healHealthAction)
-		g.actionBroker.Execute(healManaAction)
 	}
 	return UntargetedEffect{
 		Effect: effect,
@@ -305,34 +286,23 @@ func (g *Factory) logIfPlayer(user *Actor, message string) {
 		g.logError(message)
 	}
 }
-func (g *Factory) getHealHealthBy(args util.Arguments) UntargetedEffect {
-	interval := stats.NewIntervalFromString(args.Get(0))
+func (g *Factory) getFirestarter(args util.Arguments) UntargetedEffect {
 	effect := func(user *Actor, source EffectSource) {
-		healHealthAction := NewChangeResourceAction(NewActorCause("Heal", user), user, stats.Health, float64(interval.LinearRandom()))
-		g.actionBroker.Execute(healHealthAction)
-		g.logIfPlayer(user, "You feel better")
-		g.tryEndTurn(user, 100/user.GetBaseSpeed())
+		currentMap := g.state.GetMap()
+		for _, pos := range user.GetFOV().Visibles {
+			if !currentMap.IsObjectAt(pos) {
+				continue
+			}
+			object := currentMap.ObjectAt(pos)
+			if exploder, isExploder := object.(*ExplodingObject); isExploder {
+				exploder.DamageReceived(5)
+			}
+		}
 	}
 	return UntargetedEffect{
 		Effect: effect,
 		Description: []util.LabelText{
-			util.LabelTextFromString(fmt.Sprintf("Heal health by %s", interval.ToString())),
-		},
-	}
-}
-
-func (g *Factory) getHealManaBy(args util.Arguments) UntargetedEffect {
-	interval := stats.NewIntervalFromString(args.Get(0))
-	effect := func(user *Actor, source EffectSource) {
-		healHealthAction := NewChangeResourceAction(NewActorCause("Mana Surge", user), user, stats.Mana, float64(interval.LinearRandom()))
-		g.actionBroker.Execute(healHealthAction)
-		g.logError("You feel a surge of mana")
-		g.tryEndTurn(user, 100/user.GetBaseSpeed())
-	}
-	return UntargetedEffect{
-		Effect: effect,
-		Description: []util.LabelText{
-			util.LabelTextFromString(fmt.Sprintf("Heal mana by %s", interval.ToString())),
+			util.LabelTextFromString("Explode all visible barrels"),
 		},
 	}
 }
@@ -498,6 +468,7 @@ func (g *Factory) getEarthquake(args util.Arguments) UntargetedEffect {
 		g.actionBroker.QueueForExecution(NewUpdateFoVAction(NewActorCause("Earthquake", user), user))
 		g.actionBroker.QueueForExecutionAtTheSameTime(affectedActorActions)
 
+		g.audioPlayer.PlayCue("earthquake")
 		actionCost := 10 // default cost for any action is 10 aut
 		g.tryEndTurn(user, actionCost)
 	}
@@ -589,7 +560,7 @@ func (g *Factory) getBerserkSelfAction(args util.Arguments) UntargetedEffect {
 	if args.IsEmpty() {
 		g.logError(fmt.Sprintf("Berserk effect requires arguments"))
 	}
-	intervalRange := stats.NewIntervalFromString(args.Get(0))
+	intervalRange := util.ParseDice(args.Get(0))
 	turnCount := args.GetInt(1)
 	effect := func(user *Actor, source EffectSource) {
 		applyStatusAction := NewApplyStatusAction(NewActorCause("ApplyStatusEffect", user), user, StatusBerserk, turnCount)
@@ -598,7 +569,7 @@ func (g *Factory) getBerserkSelfAction(args util.Arguments) UntargetedEffect {
 		timeKeeper := g.getTimeKeeper()
 
 		RemoveTimedEffectsBySource(timeKeeper, source)
-		modifier := defs.AddToBaseAttributeRandomly(g.randomSource, stats.DamageBonus, intervalRange.AsTuple())
+		modifier := defs.AddToBaseAttributeFromRoll(g.randomSource, stats.Blood, intervalRange)
 		modifier.StackID = string(source)
 		timedModifier := NewTimedModifier(string(ActionNameBuffDamage), user, modifier, turnCount)
 		timedModifier.Apply()
@@ -692,6 +663,7 @@ func (g *Factory) getRandomTeleportAction(args util.Arguments) UntargetedEffect 
 		moveAction.DisableAnimation()
 
 		g.actionBroker.QueueForExecution(moveAction)
+		g.audioPlayer.PlayCue("teleport")
 	}
 	return UntargetedEffect{
 		Effect: effect,
@@ -713,14 +685,14 @@ func (g *Factory) getPlayerRecallAction(args util.Arguments) UntargetedEffect {
 				if isInTown {
 					dest = gridmap.Transition{
 						TargetMap:      defs.LevelNameFromDepth(g.state.GetLastDungeonLevel()),
-						TargetLocation: "ladder_up",
+						TargetLocation: "ladder_down",
 					}
 				} else { // in dungeon
 					currentLevel := LevelFromName(currentMapName)
 					if g.state.GetLastDungeonLevel() < currentLevel {
 						g.state.SetLastDungeonLevel(currentLevel)
 					}
-					dest = gridmap.Transition{TargetMap: string(defs.LevelNameTown), TargetLocation: "spawn"}
+					dest = gridmap.Transition{TargetMap: string(defs.LevelNameTownHell), TargetLocation: "spawn"}
 				}
 
 				g.state.TransitionTo(dest)
@@ -753,10 +725,10 @@ func (t *TimedModifier) TintColor() color.RGBA {
 	return defs.White
 }
 func (t *TimedModifier) Name() string {
-	return t.name
+	return defs.NiceNameForStatusEffect(t.name)
 }
 func (t *TimedModifier) String() string {
-	return t.name
+	return defs.NiceNameForStatusEffect(t.name)
 }
 func (t *TimedModifier) InventoryIcon() int32 {
 	return t.icon
@@ -764,7 +736,7 @@ func (t *TimedModifier) InventoryIcon() int32 {
 func (t *TimedModifier) GetTooltipLines(textParser func(string) []util.ColoredTextPart) []util.LabelText {
 	return []util.LabelText{
 		{
-			Text:               t.modifier.ToString(),
+			Text:               defs.DescriptionForStatusEffect(t.name, t.turnsLeft),
 			TextColor:          defs.DarkTextColor,
 			UseColorCodes:      false,
 			TextWithColorCodes: textParser(t.Name()),
@@ -862,13 +834,6 @@ func (g *Factory) hasEnchentableArmor(user *Actor) bool {
 	return true
 }
 
-func (g *Factory) doesntHaveDamageBuff(user *Actor) bool {
-	if user.GetStats().IsBuffed(stats.DamageBonus) {
-		g.logError("Your damage output is already magically enhanced.")
-		return false
-	}
-	return true
-}
 
 func (g *Factory) hasEnchentableWeapon(user *Actor) bool {
 	if !user.GetInventory().HasEnchantableWeapon() {

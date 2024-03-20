@@ -148,9 +148,6 @@ func (u *UIController) IsPlayerForcingAggression() bool {
 	return u.shiftIsBeingPressedThisTick
 }
 
-func (u *UIController) Say(actor *common.Actor, lines []string) {
-	// TODO
-}
 func (u *UIController) GetVisibleMap() geometry.Rect {
 	return u.mapRenderer.GetVisibleMap()
 }
@@ -375,10 +372,33 @@ func (u *UIController) OpenTextWindow(buffer []util.LabelText) {
 	if len(buffer) == 0 {
 		return
 	}
+	textWindow := NewLeftTextLabel(u)
+	textWindow.SetCanBeClosed(true)
+	textWindow.SetText(buffer)
+	textWindow.SetBorderPadding(geometry.Point{X: 15, Y: 15})
+	u.PushWidget(textWindow)
+}
+
+func (u *UIController) OpenCenteredTextWindowWithCallback(buffer []util.LabelText, onClose func()) {
+	if len(buffer) == 0 {
+		return
+	}
 	textWindow := NewCenteredTextLabel(u)
 	textWindow.SetCanBeClosed(true)
 	textWindow.SetText(buffer)
 	textWindow.SetBorderPadding(geometry.Point{X: 15, Y: 15})
+	textWindow.SetOnClose(onClose)
+	u.PushWidget(textWindow)
+}
+func (u *UIController) OpenTextWindowWithFollowUp(buffer []util.LabelText, followUp []util.LabelText) {
+	if len(buffer) == 0 {
+		return
+	}
+	textWindow := NewCenteredTextLabel(u)
+	textWindow.SetCanBeClosed(true)
+	textWindow.SetText(buffer)
+	textWindow.SetBorderPadding(geometry.Point{X: 15, Y: 15})
+	textWindow.SetPageTwo(followUp)
 	u.PushWidget(textWindow)
 }
 func (u *UIController) OpenInventoryOverlay(pos, tileSize geometry.Point, dataSource IconDataSource) *IconOverlay {
@@ -631,16 +651,16 @@ func (u *UIController) setupUI() {
 	u.levelUpButton = u.addLevelUpButton(geometry.Point{X: xOffset, Y: levelUpButtonY})
 	buttonBounds := u.levelUpButton.GetBounds()
 
-	u.skills = u.addSkillsOverlay(geometry.Point{X: paddingLeftAndRight, Y: 180})
-	skillBounds := u.skills.GetBounds()
+	//u.skills = u.addSkillsOverlay(geometry.Point{X: paddingLeftAndRight, Y: 180})
+	u.timer = u.addTimerOverlay(geometry.Point{X: paddingLeftAndRight, Y: 180})
+	timerBounds := u.timer.GetBounds()
 
 	topYForMap := buttonBounds.Max.Y + paddingLeftAndRight
-	bottomYForMap := skillBounds.Min.Y - paddingLeftAndRight
+	bottomYForMap := timerBounds.Min.Y - paddingLeftAndRight
 	maxHeightForMap := bottomYForMap - topYForMap
 
 	u.miniMap = u.addMiniMap(geometry.Point{X: u.uiBarWidth, Y: topYForMap}, maxHeightForMap, paddingLeftAndRight)
 
-	u.timer = u.addTimerOverlay(geometry.Point{X: paddingLeftAndRight, Y: 360})
 
 	u.OnScreenSizeChanged()
 }
@@ -784,68 +804,21 @@ func (u *UIController) BeginPlayerSellingTo(vendor *common.Actor) {
 				}
 				playerInventory.Remove(typedItem)
 				vendor.GetInventory().Add(typedItem)
-				player.GetStats().IncrementBy(stats.Gold, sellPrice)
-				//u.sendInventoryToWindowClient()
-				msg(fmt.Sprintf("You sold [:darkText]%s[:white] for [:darkText]%d[:white] gold", typedItem.Name(), sellPrice))
+				player.GetStats().IncrementBy(stats.Blood, sellPrice)
+				msg(fmt.Sprintf("You sold [:darkText]%s[:white] for [:darkText]%d[:white] blood", typedItem.Name(), sellPrice))
+				u.context.AudioPlayer.PlayCue("vendor_sell")
 				u.BeginPlayerSellingTo(vendor)
 			},
 		})
 	}
-	goldAmount := player.GetStats().GetAttribute(stats.Gold)
+	goldAmount := player.GetStats().GetAttribute(stats.Blood)
 	menu := NewShopMenu(u, u.worldTexture.GetTileSize())
 	u.PushWidget(menu)
-	menu.SetHeader("You have:", fmt.Sprintf("%d gold", goldAmount))
+	menu.SetHeader("You have:", fmt.Sprintf("%d blood", goldAmount))
 	menu.SetItems(sellItems, []Alignment{AlignmentLeft, AlignmentRight})
 }
 func (u *UIController) openLevelUpMenu() {
-	player := u.context.GameState().GetPlayer()
-	if !player.CanLevelUp() {
-		return
-	}
-	audioPlayer := u.context.AudioPlayer
-	u.levelUpButton.Hide()
-	u.ShowFullStats()
-	u.OpenMenu([]util.MenuItem{
-		{
-			MainText: "STR",
-			Action: func() {
-				player.LevelUp(stats.Strength)
-				if player.CanLevelUp() {
-					audioPlayer.PlayCue("levelup")
-					u.openLevelUpMenu()
-				} else {
-					u.levelUpButton.Hide()
-					u.ShowFullStats()
-				}
-			},
-		},
-		{
-			MainText: "DEX",
-			Action: func() {
-				player.LevelUp(stats.Dexterity)
-				if player.CanLevelUp() {
-					audioPlayer.PlayCue("levelup")
-					u.openLevelUpMenu()
-				} else {
-					u.levelUpButton.Hide()
-					u.ShowFullStats()
-				}
-			},
-		},
-		{
-			MainText: "INT",
-			Action: func() {
-				player.LevelUp(stats.Intelligence)
-				if player.CanLevelUp() {
-					audioPlayer.PlayCue("levelup")
-					u.openLevelUpMenu()
-				} else {
-					u.levelUpButton.Hide()
-					u.ShowFullStats()
-				}
-			},
-		},
-	})
+
 }
 func (u *UIController) addMiniMap(offset geometry.Point, maxHeight int, horizontalPadding int) *MinimapOverlay {
 	miniMap := u.AddMinimap(offset.Sub(geometry.Point{X: horizontalPadding}), maxHeight, offset.X-(horizontalPadding*2), u.mapRenderer.GetMiniMap())
@@ -997,6 +970,25 @@ func (u *UIController) getMiniMapColor(mapPos geometry.Point, tileColor *[4]byte
 			*tileColor = [4]byte{86 / 2, 112 / 2, 194 / 2, 255}
 			return
 		}
+		if currentMap.IsSpecialAt(mapPos, gridmap.SpecialTileLava) {
+			*tileColor = [4]byte{219/2, 75/2, 1, 255}
+			return
+		}
+		if currentMap.IsSpecialAt(mapPos, gridmap.SpecialTileSpikes) {
+			*tileColor = [4]byte{99/2, 99/2, 242/2, 255}
+			return
+		}
+		if currentMap.IsSpecialAt(mapPos, gridmap.SpecialTileChasm) {
+			*tileColor = [4]byte{20, 20, 40, 255}
+			return
+		}
+		if currentMap.IsObjectAt(mapPos) {
+			objectAt := currentMap.ObjectAt(mapPos)
+			if _, isBarrel := objectAt.(*common.ExplodingObject); isBarrel {
+				*tileColor = [4]byte{247/2, 211/2, 32/2, 255}
+				return
+			}
+		}
 		if currentMap.IsWalkable(mapPos) {
 			*tileColor = [4]byte{35, 30, 51, 255}
 		} else {
@@ -1022,6 +1014,26 @@ func (u *UIController) getMiniMapColor(mapPos geometry.Point, tileColor *[4]byte
 		}
 		*tileColor = [4]byte{86, 112, 194, 255}
 		return
+	}
+	if currentMap.IsSpecialAt(mapPos, gridmap.SpecialTileChasm) {
+		*tileColor = [4]byte{40, 40, 80, 255}
+		return
+	}
+	if currentMap.IsSpecialAt(mapPos, gridmap.SpecialTileLava) {
+		*tileColor = [4]byte{219, 75, 2, 255}
+		return
+	}
+	if currentMap.IsSpecialAt(mapPos, gridmap.SpecialTileSpikes) {
+		*tileColor = [4]byte{99, 99, 242, 255}
+		return
+	}
+
+	if currentMap.IsObjectAt(mapPos) {
+		objectAt := currentMap.ObjectAt(mapPos)
+		if _, isBarrel := objectAt.(*common.ExplodingObject); isBarrel {
+			*tileColor = [4]byte{247, 211, 32, 255}
+			return
+		}
 	}
 
 	if currentMap.IsWalkable(mapPos) {
@@ -1054,7 +1066,6 @@ func (u *UIController) StaticMapLookup(x int, y int, tick uint64) []renderer.Cel
 		worldTileColor = state.GetWaterColor()
 	}
 
-
 	// animate the worldIcon
 	if u.renderingMode == GraphicRendering && (state.GetPlayer().CanSee(mapPos) || u.disableFogOfWar) {
 		if !u.configuration.DrawTilesBehindActors && currentMap.IsActorAt(mapPos) {
@@ -1075,7 +1086,7 @@ func (u *UIController) StaticMapLookup(x int, y int, tick uint64) []renderer.Cel
 	var drawInfo []renderer.CellDrawInfo
 
 	// 1. items
-	if itemAt, isItemAt := currentMap.TryGetItemAt(mapPos); isItemAt && itemAt.IsDrawn() && (!itemAt.IsHidden() || u.context.GameState().GetFlags().IsSet(string(common.FlagHasTrueSight))) {
+	if itemAt, isItemAt := currentMap.TryGetItemAt(mapPos); isItemAt && itemAt.IsDrawn() && !itemAt.IsHidden() {
 		itemIcon := itemAt.Icon(u.worldTicks)
 		drawItem := renderer.CellDrawInfo{
 			Atlas: u.worldTexture,
@@ -1199,17 +1210,12 @@ func (u *UIController) BeginTargeting(targetRules common.TargetRules, onHit *com
 }
 
 func (u *UIController) ShowGameOverMenu() {
+	u.context.AudioPlayer.PlayCue("game_over")
 	u.OpenMenu([]util.MenuItem{
 		{
 			MainText: "Try again",
 			Action: func() {
 				u.context.ResetGame(u.context.GameState().SelectedClass)
-			},
-		},
-		{
-			MainText: "Change class",
-			Action: func() {
-				u.OpenClassSelectionMenu()
 			},
 		},
 		{
@@ -1271,9 +1277,7 @@ func (u *UIController) UpdateStatsLabel() {
 	player := state.GetPlayer()
 	playerStats := player.GetStats()
 	var hpColor color.Color
-	var manaColor color.Color
 	hpColor = defs.DarkTextColor
-	manaColor = defs.DarkTextColor
 
 	if playerStats.GetResource(stats.Health).IsLessThanPercent(0.25) {
 		hpColor = color.RGBA{R: 255, G: 30, B: 30, A: 255}
@@ -1283,26 +1287,15 @@ func (u *UIController) UpdateStatsLabel() {
 		hpColor = color.RGBA{R: 255, G: 255, B: 30, A: 255}
 	}
 
-	if playerStats.GetResource(stats.Mana).IsLessThanPercent(0.25) {
-		manaColor = color.RGBA{R: 255, G: 30, B: 30, A: 255}
-	} else if playerStats.GetResource(stats.Mana).IsLessThanPercent(0.5) {
-		manaColor = color.RGBA{R: 255, G: 150, B: 30, A: 255}
-	} else if playerStats.GetResource(stats.Mana).IsLessThanPercent(0.75) {
-		manaColor = color.RGBA{R: 255, G: 255, B: 30, A: 255}
-	}
 	label := u.statsLabel
 	mapNameParts := util.ToLabelTextWithColor(strings.Split(state.GetMap().GetDisplayName(), "\n"), defs.DarkTextColor)
 	statusParts := []util.LabelText{
 		{
-			Text:      fmt.Sprintf("HP: %s", playerStats.GetResource(stats.Health).ToString()),
+			Text:      fmt.Sprintf("Life: %d", playerStats.GetResource(stats.Health).Value()),
 			TextColor: hpColor,
 		},
 		{
-			Text:      fmt.Sprintf("MP: %s", playerStats.GetResource(stats.Mana).ToString()),
-			TextColor: manaColor,
-		},
-		{
-			Text:      fmt.Sprintf("Gold: %d", playerStats.GetAttribute(stats.Gold)),
+			Text:      fmt.Sprintf("Blood: %d", playerStats.GetAttribute(stats.Blood)),
 			TextColor: defs.DarkTextColor,
 		},
 	}
@@ -1321,7 +1314,7 @@ func (u *UIController) showHelpText() {
 	}
 	u.OpenTextWindow([]util.LabelText{
 		{
-			Text:      "Welcome to heaven and hell!",
+			Text:      "Abaddon - Help Screen",
 			TextColor: textColor,
 		},
 		{Text: "", TextColor: textColor},
@@ -1330,20 +1323,40 @@ func (u *UIController) showHelpText() {
 			TextColor: textColor,
 		},
 		{
+			Text:      "Press '.' to wait in place",
+			TextColor: textColor,
+		},
+		{
 			Text:      "Bump into stuff and people to interact with them or attack them",
+			TextColor: textColor,
+		},
+		{
+			Text:      "ADR = Armor Damage Reduction",
 			TextColor: textColor,
 		},
 		{Text: "", TextColor: textColor},
 		{
-			Text:      "Press 'q' to quickly fire at the nearest enemy with your ranged weapon",
+			Text:      "Press 'F2' to learn about the horse maneuvers",
 			TextColor: textColor,
 		},
 		{
-			Text:      "Press 'f' to aim at a specific enemy with your ranged weapon",
+			Text:      "Press 'F3' to show your quest",
 			TextColor: textColor,
 		},
 		{
-			Text:      "Press 'o' to auto-explore",
+			Text:      "Press 'F4'/'F5' to change the zoom level",
+			TextColor: textColor,
+		},
+		{
+			Text:      "Press 'Shift + F6' for spoilers on killing Kirioth",
+			TextColor: textColor,
+		},
+		{
+			Text:      "Press 'F9' to show the retry & quit menu",
+			TextColor: textColor,
+		},
+		{
+			Text:      "Press 'F10' to toggle fullscreen",
 			TextColor: textColor,
 		},
 		{
@@ -1351,7 +1364,19 @@ func (u *UIController) showHelpText() {
 			TextColor: textColor,
 		},
 		{
+			Text:      "Press 'e' to use an item from your inventory",
+			TextColor: textColor,
+		},
+		{
+			Text:      "Press 'r' to mount/dismount your horse",
+			TextColor: textColor,
+		},
+		{
 			Text:      "Press 'i' to open your inventory",
+			TextColor: textColor,
+		},
+		{
+			Text:      "Press 't' to throw an item",
 			TextColor: textColor,
 		},
 		{
@@ -1367,7 +1392,62 @@ func (u *UIController) showHelpText() {
 			TextColor: textColor,
 		},
 		{
-			Text:      "Press 'v' to show the quest log",
+			Text:      "Press 'q' to quickly fire at the nearest enemy with your ranged weapon",
+			TextColor: textColor,
+		},
+		{
+			Text:      "Press 'f' to aim at a specific enemy with your ranged weapon",
+			TextColor: textColor,
+		},
+	})
+}
+
+func (u *UIController) showHorseHelpText() {
+	textColor := defs.DarkTextColor
+	lightColor := defs.LightTextColor
+	u.OpenTextWindow([]util.LabelText{
+		{
+			Text:      "Abaddon - Movement Maneuvers",
+			TextColor: textColor,
+		},
+		{Text: "", TextColor: textColor},
+		{
+			Text:      "While riding your horse, you can execute the following maneuvers",
+			TextColor: textColor,
+		},
+		{Text: ""},
+		{
+			Text:      "Hooves of Hell",
+			TextColor: lightColor,
+		},
+		{
+			Text:      "Move towards an enemy and then away from him when he is next to you.",
+			TextColor: textColor,
+		},
+		{Text: ""},
+		{
+			Text:      "Pounding",
+			TextColor: lightColor,
+		},
+		{
+			Text:      "Move in a straight line towards an enemy twice,",
+			TextColor: textColor,
+		},
+		{
+			Text:      "a third move in the same direction can now pin an enemy on the target tile.",
+			TextColor: textColor,
+		},
+		{Text: ""},
+		{
+			Text:      "Thunderstruck",
+			TextColor: lightColor,
+		},
+		{
+			Text:      "Wait in place for two turns,",
+			TextColor: textColor,
+		},
+		{
+			Text:      "and then unleash an aoe lightning attack on all neighboring tiles.",
 			TextColor: textColor,
 		},
 	})
@@ -1379,6 +1459,57 @@ func (u *UIController) ShowLog() {
 	}
 	u.OpenTextWindow(toGradientLabelText(u.tileRenderer.ParseColorCodedText, buffer))
 	//logWindow.ScrollToBottom()
+}
+
+func (u *UIController) Show7DRLQuest() {
+	var messages []string
+	messages = append(messages, "The evil King Kirioth has betrayed the kingdom.")
+	messages = append(messages, "", "When you tried to confront him, he accused you of breaking the laws of the elders.")
+	messages = append(messages, "", "So they banished you to the underworld")
+	messages = append(messages, "", "Now is your chance to escape and seek vengeance on the king")
+	messages = append(messages, "", "Survive the 5 levels of the dungeon and reach the Town of Zalem")
+	messages = append(messages, "", "Bring the king to justice and clear your name")
+
+
+	var epicText []util.LabelText
+	epicText = append(epicText, util.LabelTextFromStringWithColor("He was met at the gate of Hades", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("By the Guardian of the Lost Souls", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("the Keeper of the Unavenged", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("And He did say to him", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("\"Let ye not pass Abaddon", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("Return to the world from whence you came", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("And seek payment", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("not only for thine own anguish", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("But to vindicate the souls of the Unavenged\"", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("And they placed in his hands", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("a sword", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("made for him", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("Called \"Vengeance\"", defs.PureRed))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("forged in brimstone", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("And tempered by the woeful tears of the Unavenged", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("And to carry him up on his journey back to the upper world", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("They brought forth their Demon horse", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("Called \"Black Death\"", defs.PureRed))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("A grim steed so fearsome in might and black in colour", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("That he could stand as one with the darkness", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("Save for his burning eyes of crimson fire", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("And on that night they rose up from Hell", defs.DarkTextColor))
+	epicText = append(epicText, util.LabelTextFromStringWithColor("The pounding of his hooves did clap like thunder..", defs.DarkTextColor))
+
+	u.OpenTextWindowWithFollowUp(util.ToLabelText(messages), epicText)
+	//logWindow.ScrollToBottom()
+}
+
+func (u *UIController) Show7DRLQuestSpoiler() {
+	var messages []string
+	messages = append(messages, "Kirioth is protected by his magic, while he is in his home town.")
+	messages = append(messages, "", "In order to break his spell, he must be dragged into hell...")
+
+	u.OpenTextWindow(util.ToLabelText(messages))
 }
 
 func (u *UIController) OpenListInventory() {
@@ -1455,7 +1586,7 @@ func (u *UIController) openShopMenuWithHandler(inventory *common.Inventory, hand
 		return
 	}
 	player := u.context.GameState().GetPlayer()
-	goldAmount := player.GetStats().GetAttribute(stats.Gold)
+	goldAmount := player.GetStats().GetAttribute(stats.Blood)
 
 	var menuItems []ShopMenuItem
 	inventoryStacks := inventory.StackedItems()
@@ -1513,24 +1644,24 @@ func (u *UIController) openShopMenuWithHandler(inventory *common.Inventory, hand
 
 	menu := NewShopMenu(u, u.worldTexture.GetTileSize())
 	u.PushWidget(menu)
-	menu.SetHeader("You have:", fmt.Sprintf("%d gold", goldAmount))
+	menu.SetHeader("You have:", fmt.Sprintf("%d blood", goldAmount))
 	menu.SetItems(menuItems, []Alignment{AlignmentLeft, AlignmentRight})
 }
 
 func (u *UIController) tryToBuy(item *common.Item, seller *common.Actor) {
 	player := u.context.GameState().GetPlayer()
-	goldAmount := player.GetStats().GetAttribute(stats.Gold)
+	goldAmount := player.GetStats().GetAttribute(stats.Blood)
 	msg := u.msg
 	cost := item.BuyPrice()
 	cannotPayForItem := cost > goldAmount
 
 	if cannotPayForItem {
-		msg("You don't have enough gold")
+		msg("You don't have enough blood")
 		u.OpenShopMenu(seller)
 		return
 	}
-	player.GetStats().DecrementBy(stats.Gold, cost)
-	seller.GetStats().IncrementBy(stats.Gold, cost)
+	player.GetStats().DecrementBy(stats.Blood, cost)
+	seller.GetStats().IncrementBy(stats.Blood, cost)
 
 	alwaysItems := u.context.Definitions.VendorDefinitions[string(seller.GetVendorType())].Always
 	seller.GetInventory().Remove(item)
@@ -1540,18 +1671,11 @@ func (u *UIController) tryToBuy(item *common.Item, seller *common.Actor) {
 		seller.GetInventory().Add(item.Clone())
 	}
 
-	msg(fmt.Sprintf("You bought [:darkText]%s[:white] for [:darkText]%d[:white] gold", item.Name(), cost))
+	u.context.AudioPlayer.PlayCue("vendor_buy")
+	msg(fmt.Sprintf("You bought [:darkText]%s[:white] for [:darkText]%d[:white] blood", item.Name(), cost))
 	u.OpenShopMenu(seller)
 }
 
-func (u *UIController) showJournal() {
-	state := u.context.GameState()
-	if !state.IsStoryModeEnabled() {
-		return
-	}
-	entries := u.context.GameState().GetQuestLog(u.tileRenderer.ParseColorCodedText)
-	u.OpenTextWindow(entries)
-}
 
 func (u *UIController) showFlags() {
 	state := u.context.GameState()

@@ -1,3 +1,3 @@
 #!/bin/bash
 
-recsel -C -P internal_name ./assets/data/items/potions.rec
+recsel -C -P internal_name ./files/assets/data/items/potions.rec

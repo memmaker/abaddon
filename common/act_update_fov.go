@@ -25,7 +25,12 @@ func (d *UpdateFoVAction) Execute(context ActionContext) []Action {
 		return nil
 	}
 
-	visionRange := context.GameState.GetPlayerVisionRange()
+	visionRange := 0
+	if actor == state.GetPlayer() {
+		visionRange = context.GameState.GetPlayerVisionRange()
+	} else {
+		visionRange = actor.VisionRange()
+	}
 
 	currentMap.UpdateFieldOfView(actor.GetFOV(), actor.MapPosition(), visionRange)
 
@@ -75,22 +80,12 @@ func updatePlayerKnowledge(context ActionContext) {
 	}
 	vis.Set(currentlyVisible)
 	for newActor, _ := range cameIntoView {
-		if newActor.IsHostile() {
-			//context.Msg(fmt.Sprintf("%s comes into view", newActor.Name()))
-			aggroRange := newActor.GetAggroRange()
-
-			distToPlayer := currentMap.MoveDistance(player.MapPosition(), newActor.MapPosition())
-			if aggroRange == 0 || distToPlayer <= aggroRange {
-				newActor.SetState(ActorStateAttacking)
-			}
+		if !newActor.IsHostileTo(player) {
+			continue
 		}
+		//context.Msg(fmt.Sprintf("%s comes into view", newActor.Name()))
 		if newActor.HasSpeech(defs.SpeechTriggerSight) {
 			context.Speak(newActor, defs.SpeechTriggerSight)
-		}
-	}
-	for oldActor, _ := range wentOutOfView {
-		if oldActor.IsHostile() {
-			//context.Msg(fmt.Sprintf("%s leaves your field of view", oldActor.Name()))
 		}
 	}
 }

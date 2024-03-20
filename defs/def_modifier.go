@@ -62,20 +62,9 @@ Each attack does x0-6 damage. Usually 2x. (Not against unique monsters)
 func GetAllModifiers() map[string]func(source *rand.Rand, level int) *stats.Modifier {
 	modifierFunctions := map[string]func(source *rand.Rand, level int) *stats.Modifier{
 		"health":            AddToBaseHealth,
-		"mana":              AddToBaseMana,
-		"strength":          AddToBaseStrength,
-		"dexterity":         AddToBaseDexterity,
-		"intelligence":      AddToBaseIntelligence,
 		"vision_range":      AddToBaseVisionRange,
-		"armor_penetration": AddToBaseArmorPenetration,
-		"damage":            AddToDamage,
 		"armor_class":       AddToArmorClass,
-		"steal_health":      StealHealth,
-		"steal_mana":        StealMana,
-		"damage_multiplier": AddDamage,
 		"armor_multiplier":  AddArmor,
-		"light_radius":      AddToBaseLightRadius,
-		"health_regen":      AddToHealthRegen,
 		"attack_speed":      AddToAttackSpeed,
 		"move_speed":        AddToMoveSpeed,
 		"speed":             AddToBaseSpeed,
@@ -111,14 +100,6 @@ func NewModifierFromNameWithDiceBonus(modName string, value util.Dice) *stats.Mo
 	return modifier
 }
 
-func StealHealth(source *rand.Rand, level int) *stats.Modifier {
-	interval := util.NewTuple(0.03, 0.05)
-	return StealBaseResource(source, stats.LifeStealFactor, interval)
-}
-func StealMana(source *rand.Rand, level int) *stats.Modifier {
-	interval := util.NewTuple(0.03, 0.05)
-	return StealBaseResource(source, stats.ManaStealFactor, interval)
-}
 
 func AddToArmorClass(source *rand.Rand, level int) *stats.Modifier {
 	levelTable := []ModRow[int, int]{
@@ -139,22 +120,6 @@ func AddToArmorClass(source *rand.Rand, level int) *stats.Modifier {
 
 	return mod
 }
-func AddToHealthRegen(source *rand.Rand, level int) *stats.Modifier {
-	levelTable := []ModRow[int, int]{
-		{1, util.NewTuple(-2, -1)},
-		{1, util.NewTuple(1, 2)},
-	}
-	interval := chooseIntervalFromTable(source, level, levelTable)
-
-	mod := &stats.Modifier{
-		Description:    "of regeneration",
-		Attribute:      stats.HealthRegeneration,
-		Value:          randIntervalValue(source, interval),
-		Mode:           stats.ModifyAdditive,
-		IsPercentBased: false,
-	}
-	return mod
-}
 func AddToBaseHealth(source *rand.Rand, level int) *stats.Modifier {
 	levelTable := []ModRow[int, int]{
 		{4, util.NewTuple(-25, -11)},
@@ -170,69 +135,6 @@ func AddToBaseHealth(source *rand.Rand, level int) *stats.Modifier {
 	}
 	interval := chooseIntervalFromTable(source, level, levelTable)
 	return AddToBaseResource(source, stats.MaxHealth, interval)
-}
-
-func AddToBaseMana(source *rand.Rand, level int) *stats.Modifier {
-	levelTable := []ModRow[int, int]{
-		{4, util.NewTuple(-25, -11)},
-		{1, util.NewTuple(-10, -1)},
-		{1, util.NewTuple(10, 15)},
-		{5, util.NewTuple(16, 20)},
-		{9, util.NewTuple(21, 30)},
-		{15, util.NewTuple(31, 40)},
-		{21, util.NewTuple(41, 50)},
-		{27, util.NewTuple(51, 60)},
-		//        {35, util.NewTuple(61, 80)},
-		//        {60, util.NewTuple(81, 100)},
-	}
-	interval := chooseIntervalFromTable(source, level, levelTable)
-	return AddToBaseResource(source, stats.MaxMana, interval)
-}
-func AddToDamage(source *rand.Rand, level int) *stats.Modifier {
-	levelTable := []ModRow[int, int]{
-		{1, util.NewTuple(1, 2)},
-		{3, util.NewTuple(2, 3)},
-		{5, util.NewTuple(4, 5)},
-		{7, util.NewTuple(6, 8)},
-	}
-	interval := chooseIntervalFromTable(source, level, levelTable)
-	return AddToBaseAttributeRandomly(source, stats.DamageBonus, interval)
-}
-func AddToBaseStrength(source *rand.Rand, level int) *stats.Modifier {
-	levelTable := []ModRow[int, int]{
-		{1, util.NewTuple(1, 2)},
-		{3, util.NewTuple(2, 3)},
-		{5, util.NewTuple(4, 5)},
-		{7, util.NewTuple(6, 8)},
-	}
-	interval := chooseIntervalFromTable(source, level, levelTable)
-	return AddToBaseAttributeRandomly(source, stats.Strength, interval)
-}
-func AddToBaseDexterity(source *rand.Rand, level int) *stats.Modifier {
-	levelTable := []ModRow[int, int]{
-		{1, util.NewTuple(1, 2)},
-		{3, util.NewTuple(2, 3)},
-		{5, util.NewTuple(4, 5)},
-		{7, util.NewTuple(6, 8)},
-	}
-	interval := chooseIntervalFromTable(source, level, levelTable)
-	return AddToBaseAttributeRandomly(source, stats.Dexterity, interval)
-}
-
-func AddToBaseIntelligence(source *rand.Rand, level int) *stats.Modifier {
-	levelTable := []ModRow[int, int]{
-		{1, util.NewTuple(1, 2)},
-		{3, util.NewTuple(2, 3)},
-		{5, util.NewTuple(4, 5)},
-		{7, util.NewTuple(6, 8)},
-	}
-	interval := chooseIntervalFromTable(source, level, levelTable)
-	return AddToBaseAttributeRandomly(source, stats.Intelligence, interval)
-}
-
-func AddToBaseArmorPenetration(source *rand.Rand, level int) *stats.Modifier {
-	interval := util.NewTuple(2, 24)
-	return AddToBaseAttributeRandomly(source, stats.ArmorPenetration, interval)
 }
 
 func AddToBaseSpeed(source *rand.Rand, level int) *stats.Modifier {
@@ -272,14 +174,6 @@ func AddToBaseVisionRange(source *rand.Rand, level int) *stats.Modifier {
 	return AddToBaseAttributeRandomly(source, stats.VisionRange, interval)
 }
 
-func AddToBaseLightRadius(source *rand.Rand, level int) *stats.Modifier {
-	interval := util.NewTuple(-7, 16)
-	return AddToBaseAttributeRandomly(source, stats.LightRadius, interval)
-}
-func AddDamage(source *rand.Rand, level int) *stats.Modifier {
-	interval := util.NewTuple(1, 2)
-	return AddDamageOrArmor(source, stats.DamageBonus, interval)
-}
 func AddArmor(source *rand.Rand, level int) *stats.Modifier {
 	table := []ModRow[int, int]{
 		{3, util.NewTuple(-1, -0)},
@@ -355,6 +249,11 @@ func AddToBaseResource(source *rand.Rand, randomAttribute stats.Name, minMax uti
 func AddToBaseAttributeRandomly(source *rand.Rand, randomAttribute stats.Name, minMax util.Tuple[int, int]) *stats.Modifier {
 	bonusValue := randIntervalValue(source, minMax)
 	return AddToBaseAttribute(source, randomAttribute, bonusValue)
+}
+
+func AddToBaseAttributeFromRoll(source *rand.Rand, randomAttribute stats.Name, minMax util.Dice) *stats.Modifier {
+	bonusValue := minMax.Roll()
+	return AddToBaseAttribute(source, randomAttribute, float64(bonusValue))
 }
 
 func AddToBaseAttribute(source *rand.Rand, randomAttribute stats.Name, bonusValue float64) *stats.Modifier {

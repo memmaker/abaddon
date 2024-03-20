@@ -16,71 +16,23 @@ func StatFromString(statName string) Name {
 type Name string
 
 const (
-	// clasic roguelike attributes (SID)
-	Strength     Name = "strength"
-	Intelligence Name = "intelligence"
-	Dexterity    Name = "dexterity"
-
 	// baseline for the game
-	Level              Name = "level"
-	Experience         Name = "experience"
-	Gold               Name = "gold"
-	BaseSpeed          Name = "speed"
+	BaseSpeed  Name = "speed"
 	ArmorClass         Name = "armor_class"
 	AttackSpeedFactor  Name = "attack_speed"
 	MoveSpeedFactor    Name = "move_speed"
-	LifeStealFactor    Name = "life_steal"
-	ManaStealFactor    Name = "mana_steal"
-	ManaRegeneration   Name = "mana_regeneration"
-	HealthRegeneration Name = "health_regeneration"
-	DamageBonus        Name = "damage_bonus"
-
-	ArmorPenetration Name = "armor_penetration"
 
 	MaxHealth Name = "max_health"
-	MaxMana   Name = "max_mana"
 
 	Health Name = "health"
-	Mana   Name = "mana"
 
 	AggroRange Name = "aggro_range"
 
 	VisionRange Name = "vision_range"
 
-	LightRadius Name = "light_radius"
+	// 7drl specific
+	Blood      Name = "blood"
 )
-
-func GetAllAttributeNames() []Name {
-	return []Name{
-		Level,
-		Strength,
-		Intelligence,
-		Dexterity,
-		BaseSpeed,
-	}
-}
-
-func GetAttributesForModifiersByLevel(level int) []Name {
-	/*
-	   BaseSpeed:            10, // we now would need an attack speed and a movement speed modifier
-	              AttackSpeedFactor:    1,
-	              MoveSpeedFactor:      1,
-	              EnhancedDamageFactor: 1,
-
-	              MaxHealth: 10,
-	              MaxMana:   10,
-	*/
-	switch {
-	case level < 3:
-		return []Name{Strength, Intelligence, Dexterity}
-	case level >= 3 && level < 5:
-		return []Name{Strength, Intelligence, Dexterity, MaxHealth, MaxMana}
-	case level >= 5 && level < 7:
-		return []Name{Strength, Intelligence, Dexterity, MaxHealth, MaxMana, AttackSpeedFactor, MoveSpeedFactor}
-	default:
-		return []Name{Strength, Intelligence, Dexterity, MaxHealth, MaxMana, AttackSpeedFactor, MoveSpeedFactor, DamageBonus}
-	}
-}
 
 type ModificationMode bool
 
@@ -137,33 +89,17 @@ type AttributeHolder struct {
 func NewAttributeHolder() AttributeHolder {
 	holder := AttributeHolder{
 		attributes: map[Name]float64{
-			Level:        1,
-			Experience:   0,
-			Strength:     9,
-			Intelligence: 9,
-			Dexterity:    9,
-
-			Gold: 0,
+			Blood: 0,
 
 			BaseSpeed:  10, // we now would need an attack speed and a movement speed modifier
 			ArmorClass: 0,
 
 			AttackSpeedFactor: 1,
 			MoveSpeedFactor:   1,
-			DamageBonus:       0,
 
-			LifeStealFactor: 0,
-			ManaStealFactor: 0,
-
-			HealthRegeneration: 0.0, //0.01,
-			ManaRegeneration:   0.0, //0.01,
-
-			MaxHealth: 10,
-			MaxMana:   10,
+			MaxHealth: 9,
 
 			VisionRange:      20,
-			LightRadius:      0,
-			ArmorPenetration: 0,
 
 			AggroRange: 0, // No range limit by default, means aggro on sight
 		},
@@ -172,8 +108,7 @@ func NewAttributeHolder() AttributeHolder {
 	}
 
 	resources := map[Name]*Resource{
-		Health: NewResource(-10, holder.getMaxForResource(MaxHealth), 10),
-		Mana:   NewResource(0, holder.getMaxForResource(MaxMana), 0),
+		Health: NewResource(-9, holder.getMaxForResource(MaxHealth), 9),
 	}
 	holder.resources = resources
 	return holder
@@ -276,7 +211,7 @@ func (a *AttributeHolder) Decrement(name Name) {
 
 func (a *AttributeHolder) SetAttribute(attributeName Name, value int) {
 	if _, ok := a.attributes[attributeName]; !ok {
-		println("attribute not found", attributeName)
+		//println("attribute not found", attributeName)
 		return
 	}
 	a.attributes[attributeName] = float64(value)

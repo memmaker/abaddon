@@ -1,3 +1,3 @@
 #!/bin/zsh
 
-~/bin/remapper 8 8 ./assets/classic_roguelike.png ./assets/data/items/throwables.rec
+~/bin/remapper 8 8 ./files/assets/classic_roguelike.png ./files/assets/data/items/throwables.rec

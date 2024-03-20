@@ -26,12 +26,106 @@ type Actions struct {
 	definitions  defs.DataContainer
 
 	getTimeKeeper  func() *common.TimeKeeper
-	logError       func(message string)
+	msg            func(message string)
 	autoExplore    bool
 	playerPath     []geometry.Point
 	isResting      bool
 	actorSpeak     func(actor *common.Actor, trigger defs.ActorSpeechTrigger)
 	queueAfterTurn func(call func())
+	playerMoves    []geometry.Point
+}
+
+func (a *Actions) WaitOneTurn() {
+	state := a.state
+	player := state.GetPlayer()
+
+	isMounted := player.HasLeader()
+
+	if isMounted {
+		freeManeuverActions := a.maneuverAction(geometry.Point{}, false)
+		if len(freeManeuverActions) == 0 && rand.Intn(30) < 0  {
+			a.audio.PlayCue("black_death")
+		} else {
+			for _, action := range freeManeuverActions {
+				a.actionBroker.Execute(action)
+			}
+		}
+	}
+
+	a.EndTurn(10)
+}
+
+func (a *Actions) MountToggle() {
+	state := a.state
+	player := state.GetPlayer()
+
+	isMounted := player.HasLeader()
+
+	if isMounted {
+		a.unmountCompanion()
+	} else {
+		a.mountCompanion()
+	}
+
+	a.player = a.state.GetPlayer()
+	a.updateFoV()
+}
+func (a *Actions) unmountCompanion() {
+	state := a.state
+	companion := state.GetPlayer()
+
+	if !companion.IsAlive() {
+		return
+	}
+	player := companion.GetLeader()
+
+	currentMap := state.GetMap()
+	freePos := currentMap.GetFreeCellsForDistribution(companion.MapPosition(), 1, func(point geometry.Point) bool {
+		return currentMap.CurrentlyPassableAndSafeForActor(player)(point)
+	})
+	if len(freePos) == 0 {
+		a.msg("No space to unmount")
+		return
+	}
+	// add the player actor to the map
+	spawnPos := freePos[0]
+	currentMap.AddActor(player, spawnPos)
+	player.SetDrawPosition(spawnPos.ToPointF())
+	state.SetPlayer(player)
+	state.SetCompanion(companion)
+	a.getTimeKeeper().AddTimed(companion)
+	a.ui().UpdateStatsLabel()
+}
+func (a *Actions) mountCompanion() {
+	state := a.state
+	player := state.GetPlayer()
+
+	if !player.IsAlive() {
+		return
+	}
+	if !state.HasCompanion() {
+		a.msg(fmt.Sprintf("You don't have a companion"))
+		return
+	}
+	companion := state.GetCompanion()
+	distance := state.GetMap().MoveDistance(player.MapPosition(), companion.MapPosition())
+	if distance > 1 {
+		a.msg(fmt.Sprintf("Your companion is too far away"))
+		return
+	}
+	// approach
+	// remove the player actor from the map
+	currentMap := state.GetMap()
+	currentMap.RemoveActor(player)
+
+	state.SetPlayer(companion)
+	state.SetCompanion(nil)
+	a.getTimeKeeper().Remove(companion)
+	companion.SetInventory(player.GetInventory())
+	companion.SetEquipment(player.GetEquipment())
+
+
+	a.ui().UpdateStatsLabel()
 }
 
 func (a *Actions) BeginActionTargeting(element *common.TargetedAction) {
@@ -100,20 +194,22 @@ type PlayerActionsContext struct {
 	Animator       common.Animator
 	Configuration  common.Configuration
 	QueueAfterTurn func(call func())
+	AudioPlayer    *audio.Player
 }
 
 func NewActions(context PlayerActionsContext) *Actions {
 	return &Actions{
-		player:        context.Player,
-		actionBroker:  context.ActionBroker,
-		state:         context.State,
-		ui:            context.UI,
-		actorSpeak:    context.Speak,
-		animator:      context.Animator,
-		getTimeKeeper: context.GetTimeKeeper,
-		logError:      context.Msg,
-		config:        context.Configuration,
+		player:         context.Player,
+		actionBroker:   context.ActionBroker,
+		state:          context.State,
+		ui:             context.UI,
+		actorSpeak:     context.Speak,
+		animator:       context.Animator,
+		getTimeKeeper:  context.GetTimeKeeper,
+		msg:            context.Msg,
+		config:         context.Configuration,
 		queueAfterTurn: context.QueueAfterTurn,
+		audio: context.AudioPlayer,
 	}
 }
 func (a *Actions) EquipItem(item *common.Item) {
@@ -125,7 +221,7 @@ func (a *Actions) UnequipItem(item *common.Item) {
 }
 
 func (a *Actions) ActivateItemActionForPlayer(itemWithAction *common.Item) {
-	msg := a.logError
+	msg := a.msg
 	user := a.player // an AI actor needs to provide a target pos for targeted common.. handle this elsewhere..
 	if !user.CanUseItems() || !itemWithAction.HasAction() {
 		return
@@ -157,10 +253,10 @@ func (a *Actions) ActivateItemActionForPlayer(itemWithAction *common.Item) {
 }
 
 func (a *Actions) activateUntargetedAction(actor *common.Actor, action *common.UntargetedAction, source common.EffectSource) {
-	action.Reset()
 	if action.IsDelayed() {
 		// add to timekeeper
-		a.logError(fmt.Sprintf("%s is delayed for %d turns", action.Name(), action.GetDelayInTurns()))
+		action.Reset()
+		a.msg(fmt.Sprintf("%s is delayed for %d turns", action.Name(), action.GetDelayInTurns()))
 		action.SetCurrentUserAndSource(actor, source)
 		timeKeeper := a.getTimeKeeper()
 		common.RemoveTimedEffectsBySource(timeKeeper, source)
@@ -208,6 +304,11 @@ func (a *Actions) GetContextActionsForItem(item *common.Item) []util.MenuItem {
 
 func (a *Actions) ManualMovePlayer(direction geometry.Point) {
 	state := a.state
+
+	if state.GetFlags().IsSet("player_fell_into_chasm") {
+		return
+	}
+
 	ui := a.ui()
 	player := state.GetPlayer()
 	if !player.IsAlive() {
@@ -216,7 +317,6 @@ func (a *Actions) ManualMovePlayer(direction geometry.Point) {
 	ui.CancelTargeting()
 	a.CancelAutoMove()
 	//g.actionBroker.CancelAllAnimations()
-
 	if player.HasStatusEffect(common.StatusConfused) {
 		if rand.Intn(3) != 0 { // one in three chance to succeed with movement
 			// pick a different random direction..
@@ -235,7 +335,20 @@ func (a *Actions) ManualMovePlayer(direction geometry.Point) {
 		return
 	}
 
+	destination := player.MapPosition().Add(direction)
+
 	a.actionBroker.Execute(playerAction)
+
+	didMove := player.MapPosition() == destination
+	freeManeuverActions := a.maneuverAction(direction, didMove)
+	if player.HasLeader() && len(freeManeuverActions) == 0 && rand.Intn(30) == 0 {
+		a.audio.PlayCue("black_death")
+	} else {
+		for _, action := range freeManeuverActions {
+			a.actionBroker.Execute(action)
+		}
+	}
+
 	a.actionBroker.Execute(common.NewEndPlayerTurnAction(playerAction.Cause(), playerAction.GetDelayInAut()))
 }
 
@@ -252,14 +365,15 @@ func (a *Actions) getActionContext() common.ActionContext {
 
 func (a *Actions) nextStepOnPlayerPath() {
 	state := a.state
-	msg := a.logError
-	if !state.GetPlayer().IsAlive() {
+	msg := a.msg
+	player := state.GetPlayer()
+	if !player.IsAlive() {
 		a.stopAutoMove()
 		return
 	}
 	if a.IsPlayerAutoMoving() {
 		if state.GetVisibility().GetVisibleEnemyCount(func(actor *common.Actor) bool {
-			return actor.IsHostile() && actor.IsHostileTo(state.GetPlayer())
+			return actor.IsHostileTo(player)
 		}) > 0 {
 			a.stopAutoMove()
 			msg("You can see an enemy")
@@ -269,41 +383,52 @@ func (a *Actions) nextStepOnPlayerPath() {
 		// pop first element
 		nextStep := a.playerPath[0]
 
-		if state.GetMap().IsActorAt(nextStep) {
-			//actorAt := state.GetMap().ActorAt(nextStep)
-			a.stopAutoMove()
-			if !a.autoExplore { // never explore into another actor, only deliberately
-				direction := nextStep.Sub(state.GetPlayer().MapPosition())
-				a.ManualMovePlayer(direction)
+		currentMap := state.GetMap()
+		if currentMap.IsActorAt(nextStep) {
+			actorAt := currentMap.ActorAt(nextStep)
+			if actorAt.IsAlly(player) {
+				// SWAP
+				a.playerPath = a.playerPath[1:]
+				autoMoveAction := common.NewSwapPositionsAction(common.AbstractCause("Player Movement"), player, actorAt, true)
+				autoMoveAction.SetAnimationDelay(0.08)
+				a.actionBroker.QueueForExecution(autoMoveAction)
+				a.actionBroker.QueueForExecution(common.NewEndPlayerTurnAction(autoMoveAction.Cause(), autoMoveAction.GetDelayInAut()))
+				return
+			} else {
+				a.stopAutoMove()
+				if !a.autoExplore { // never explore into another actor, only deliberately
+					direction := nextStep.Sub(player.MapPosition())
+					a.ManualMovePlayer(direction)
+				}
+				return
 			}
-			return
 		}
 
-		if state.GetMap().IsObjectAt(nextStep) {
+		if currentMap.IsObjectAt(nextStep) {
 			if a.state.IsClosedDoorAt(nextStep) {
-				openDoorAction := common.NewOpenDoorAction(common.AbstractCause("Player Movement"), state.GetPlayer(), nextStep)
+				openDoorAction := common.NewOpenDoorAction(common.AbstractCause("Player Movement"), player, nextStep)
 				a.actionBroker.QueueForExecution(openDoorAction)
 				a.actionBroker.QueueForExecution(common.NewEndPlayerTurnAction(openDoorAction.Cause(), openDoorAction.GetDelayInAut()))
 				return
 			} else if !a.autoExplore {
-				objectAt := state.GetMap().ObjectAt(nextStep)
-				if !objectAt.IsWalkable(state.GetPlayer()) {
+				objectAt := currentMap.ObjectAt(nextStep)
+				if !objectAt.IsWalkable(player) {
 					a.stopAutoMove()
 					msg(fmt.Sprintf("You bump into %s", objectAt.Name()))
-					objectAt.ActorBumpedInto(state.GetPlayer(), common.AnimateNow())
+					objectAt.ActorBumpedInto(player, common.AnimateNow())
 					return
 				}
 			}
 		}
 
-		if !state.GetMap().IsCurrentlyPassable(nextStep) {
+		if !currentMap.IsCurrentlyPassable(nextStep) {
 			a.stopAutoMove()
 			msg("You can't move there")
 			return
 		}
 
 		a.playerPath = a.playerPath[1:]
-		autoMoveAction := common.NewMoveAction(common.AbstractCause("Player Movement"), state.GetPlayer(), nextStep, true)
+		autoMoveAction := common.NewMoveAction(common.AbstractCause("Player Movement"), player, nextStep, true)
 		autoMoveAction.SetAnimationDelay(0.08)
 		a.actionBroker.QueueForExecution(autoMoveAction)
 		a.actionBroker.QueueForExecution(common.NewEndPlayerTurnAction(autoMoveAction.Cause(), autoMoveAction.GetDelayInAut()))
@@ -332,12 +457,19 @@ func (a *Actions) continuePlayerAutoMovement(targetPos geometry.Point) {
 	a.nextStepOnPlayerPath()
 }
 func (a *Actions) allowedForAutoExplore(point geometry.Point) bool {
+	if a.state.HasCompanion() && a.state.GetCompanion().MapPosition() == point {
+		return true
+	}
 	currentMap := a.state.GetMap()
 	isWalkable := currentMap.CurrentlyPassableAndSafeForActor(a.state.GetPlayer())
+
 	return isWalkable(point) && !currentMap.IsStairsAt(point)
 }
 func (a *Actions) allowedForAutoMove(targetPos geometry.Point) func(point geometry.Point) bool {
 	return func(point geometry.Point) bool {
+		if a.state.HasCompanion() && a.state.GetCompanion().MapPosition() == point {
+			return true
+		}
 		currentMap := a.state.GetMap()
 		isWalkable := currentMap.CurrentlyPassableAndSafeForActor(a.state.GetPlayer())
 		return isWalkable(point) || point == targetPos
@@ -359,14 +491,14 @@ func (a *Actions) StartPlayerAutoMovement(targetPos geometry.Point) {
 		return
 	}
 
-	if len(a.state.GetVisibility().GetVisibleEnemies()) > 0 {
+	if len(a.state.GetVisibility().GetVisibleEnemies(player)) > 0 {
 		// player is trying to move while enemies are visible..
-		a.logError("You can't run while enemies are visible")
+		a.msg("You can't run while enemies are visible")
 		return
 	}
 
 	if !player.CanAutoMove() {
-		a.logError("You can't move in a coordinated fashion right now")
+		a.msg("You can't move in a coordinated fashion right now")
 		return
 	}
 
@@ -414,7 +546,7 @@ func (a *Actions) getNextAutoExploreTarget() (geometry.Point, bool) {
 
 	if !playerInv.IsFull() && a.config.AutoPickup {
 		nearestItem := state.GetMap().GetNearestExploredItem(playerPos, func(item *common.Item) bool {
-			return !item.IsDroppedByPlayer() && (!item.IsHidden() || state.GetFlags().IsSet(string(common.FlagHasTrueSight)))
+			return !item.IsDroppedByPlayer() && !item.IsHidden()
 		})
 		if nearestItem != playerPos {
 			return nearestItem, true
@@ -448,21 +580,21 @@ func (a *Actions) stopAutoMove() {
 
 func (a *Actions) StartAutoExplore() {
 	if !a.state.GetPlayer().CanAutoMove() {
-		a.logError("You can't explore right now")
+		a.msg("You can't explore right now")
 		return
 	}
 	target, hasTarget := a.getNextAutoExploreTarget()
 	if a.autoExplore {
 		a.stopAutoMove()
-		a.logError("You stop exploring")
+		a.msg("You stop exploring")
 		return
 	}
 	if hasTarget {
-		a.logError("You start exploring")
+		a.msg("You start exploring")
 		a.autoExplore = true
 		a.StartPlayerAutoMovement(target)
 	} else {
-		a.logError("Nothing to explore")
+		a.msg("Nothing to explore")
 	}
 }
 
@@ -483,7 +615,7 @@ func (a *Actions) goOneLevelUp() {
 	})
 
 	if nearestStairsUp == ourPos {
-		a.logError("No known path")
+		a.msg("No known path")
 		return
 	}
 	a.CancelAutoMove()
@@ -503,7 +635,7 @@ func (a *Actions) goOneLevelDown() {
 		return tile.IsStairsDown()
 	})
 	if nearestStairsDown == ourPos {
-		a.logError("No known path")
+		a.msg("No known path")
 		return
 	}
 	a.CancelAutoMove()
@@ -516,14 +648,14 @@ func (a *Actions) QuickRangedAttack() {
 		return
 	}
 	if !state.GetPlayer().GetEquipment().HasRangedWeaponEquipped() {
-		a.logError("You don't have a ranged weapon equipped")
+		a.msg("You don't have a ranged weapon equipped")
 		return
 	}
 	rangedAttackRuleProvider := common.NewRangedAttackTargetingRules(util.Arguments{})
 	rangedAttackRules := rangedAttackRuleProvider.GetTargetRules(state.GetPlayer(), common.OneTargetTile(state.GetMap, util.Arguments{}), state.GetMap())
 	target := rangedAttackRules.GetPreSelectedTarget()
 	if target == state.GetPlayer().MapPosition() {
-		a.logError("You can't attack yourself like that")
+		a.msg("You can't attack yourself like that")
 		return
 	}
 	a.playerRangedAttack(state.GetPlayer(), target)
@@ -536,7 +668,7 @@ func (a *Actions) AimedRangedAttack() {
 		return
 	}
 	if !state.GetPlayer().GetEquipment().HasRangedWeaponEquipped() {
-		a.logError("You don't have a ranged weapon equipped")
+		a.msg("You don't have a ranged weapon equipped")
 		return
 	}
 	a.defaultRangedTargeting(a.playerRangedAttack) // execute ranged attack action and end turn)
@@ -557,7 +689,7 @@ func (a *Actions) beginRangedTargeting(targetRules common.TargetRules, onSelecte
 		Activate: func(attacker *common.Actor, target geometry.Point, hitPositions []geometry.Point) {
 			origin := state.GetPlayer().MapPosition()
 			if origin == target {
-				a.logError("You can't attack yourself like that")
+				a.msg("You can't attack yourself like that")
 				return
 			}
 			onSelected(attacker, target)
@@ -567,6 +699,27 @@ func (a *Actions) beginRangedTargeting(targetRules common.TargetRules, onSelecte
 		},
 	}
 	a.ui().BeginTargeting(targetRules, onHit)
+}
+
+func (a *Actions) UseItem() {
+	state := a.state
+	player := state.GetPlayer()
+	if !player.IsAlive() {
+		return
+	}
+
+	inventory := player.GetInventory()
+
+	userInterface := a.ui()
+	useFilter := func(element *common.Item) bool {
+		return element.HasAction()
+	}
+	onSelected := func(itemKey rune) {
+		userInterface.PopAll()
+		useItem := inventory.GetItemByLetter(itemKey)
+		a.ActivateItemActionForPlayer(useItem)
+	}
+	userInterface.OpenListInventoryForSelection(useFilter, onSelected)
 }
 
 func (a *Actions) AimedThrow() {
@@ -606,7 +759,8 @@ func (a *Actions) AutoAttack() {
 	a.stopAutoMove()
 	state := a.state
 	gui := a.ui()
-	if !state.GetPlayer().IsAlive() {
+	player := state.GetPlayer()
+	if !player.IsAlive() {
 		return
 	}
 	var visibleEnemies []*common.Actor
@@ -616,14 +770,13 @@ func (a *Actions) AutoAttack() {
 			visibleEnemies = append(visibleEnemies, actor)
 		}
 	} else {
-		visibleEnemies = state.GetVisibility().GetVisibleEnemies()
+		visibleEnemies = state.GetVisibility().GetVisibleEnemies(player)
 	}
 
 	if len(visibleEnemies) == 0 {
 		return
 	}
 
-	player := state.GetPlayer()
 	hasRanged := player.GetEquipment().HasRangedWeaponEquipped()
 	hasMelee := player.GetEquipment().HasMeleeWeaponEquipped()
 	slices.SortStableFunc(visibleEnemies, func(i, j *common.Actor) int {
@@ -703,65 +856,11 @@ func (a *Actions) playerMeleeAttack(player *common.Actor, defender *common.Actor
 }
 func (a *Actions) playerRangedAttack(player *common.Actor, targetPos geometry.Point) {
 	rangedAttackAction := common.NewRangedAttackAction(common.NewActorCause("Ranged attack", player), player, targetPos)
-	/* TODO
-	hitEffects := player.GetRangedHitEffects()
-	if len(hitEffects) > 0 {
-		rangedAttackAction.SetAdditionalOnHitActions(func(attacker *common.Actor, target geometry.Point, hitPositions ) []common.Action {
-			for _, effect := range hitEffects {
-				effect.Activate(attacker, target, hitPositions)
-			}
-		})
-	}
-
-	 */
 	a.actionBroker.Execute(rangedAttackAction)
 	a.actionBroker.Execute(common.NewEndPlayerTurnAction(rangedAttackAction.Cause(), rangedAttackAction.GetDelayInAut()))
 }
 
-func (a *Actions) RestUntilHealed() {
-	state := a.state
-	if len(state.GetVisibility().GetVisibleEnemies()) > 0 {
-		a.logError("You can't rest with enemies nearby")
-		return
-	}
-	/*
-	hpRegenRate := state.GetPlayer().GetStats().GetAttributeAsFloat(stats.HealthRegeneration)
-	if hpRegenRate <= 0 {
-		a.isResting = false
-		a.logError("You won't heal through resting")
-		return
-	}
-	 */
-	healthResource := state.GetPlayer().GetStats().GetResource(stats.Health)
-	if healthResource.IsAtMax() {
-		a.isResting = false
-		if a.isResting {
-			a.logError("Your spirits have been restored")
-		} else {
-			a.logError("You are already at full health")
-		}
-		return
-	}
 
-	playerInventory := state.GetPlayer().GetInventory()
-	if !playerInventory.HasFood() {
-		a.isResting = false
-		a.logError("You have no food to eat")
-		return
-	}
-
-	playerInventory.UseFood()
-
-	a.isResting = true
-	userInterface := a.ui()
-	userInterface.FadeToBlack()
-	a.queueAfterTurn(func() {
-		a.isResting = false
-		userInterface.FadeFromBlack()
-		a.actionBroker.QueueForExecution(common.NewChangeResourceAction(common.AbstractCause("Resting"), state.GetPlayer(), stats.Health, float64(healthResource.GetMax())))
-	})
-	a.actionBroker.QueueForExecution(common.NewEndPlayerTurnAction(common.AbstractCause("Resting"), 10))
-}
 func (a *Actions) SetQueueAfterTurn(afterTurn func(call func())) {
 	a.queueAfterTurn = afterTurn
 }
@@ -770,11 +869,11 @@ func (a *Actions) ShowActorInfoAt(mapPos geometry.Point) {
 	player := state.GetPlayer()
 	actor := state.GetMap().ActorAt(mapPos)
 	infoText := util.ToLabelText(actor.GetInfoText())
-	if actor != player && actor.IsHostile() {
+	if !actor.IsVendor() && actor.GetFaction() != player.GetFaction() {
 		otherHasRanged := actor.GetEquipment().HasRangedWeaponEquipped()
 		playerHasRanged := player.GetEquipment().HasRangedWeaponEquipped()
 
-		otherMeleeDamage := actor.GetDamageDice(common.MeleeAttack)
+		otherMeleeDamage := actor.GetDamageDice(common.MeleeAttack, "")
 
 		expectedMeleeDamage := otherMeleeDamage.ExpectedValue()
 		maxMeleeDamage := otherMeleeDamage.Max()
@@ -804,7 +903,7 @@ func (a *Actions) ShowActorInfoAt(mapPos geometry.Point) {
 		}
 
 		if otherHasRanged {
-			otherRangedDamage := actor.GetDamageDice(common.RangedAttack)
+			otherRangedDamage := actor.GetDamageDice(common.RangedAttack, "")
 
 			expectedRangedDamage := otherRangedDamage.ExpectedValue()
 			maxRangedDamage := otherRangedDamage.Max()
@@ -834,7 +933,7 @@ func (a *Actions) ShowActorInfoAt(mapPos geometry.Point) {
 			}
 		}
 
-		playerMeleeDamage := player.GetDamageDice(common.MeleeAttack)
+		playerMeleeDamage := player.GetDamageDice(common.MeleeAttack, actor.GetInternalName())
 
 		playerExpectedMeleeDamage := playerMeleeDamage.ExpectedValue()
 		playerMaxMeleeDamage := playerMeleeDamage.Max()
@@ -870,7 +969,7 @@ func (a *Actions) ShowActorInfoAt(mapPos geometry.Point) {
 
 			infoText = append(infoText, util.LabelTextFromString(""), util.LabelTextFromStringWithColor(fmt.Sprintf("You have a %d%% chance to hit with a ranged attack.", int(playerHitChance*100)), defs.DarkGreen))
 
-			playerRangedDamage := player.GetDamageDice(common.RangedAttack)
+			playerRangedDamage := player.GetDamageDice(common.RangedAttack, actor.GetInternalName())
 
 			playerExpectedRangedDamage := playerRangedDamage.ExpectedValue()
 			playerMaxRangedDamage := playerRangedDamage.Max()
@@ -912,5 +1011,100 @@ func (a *Actions) updateFoV() {
 
 func (a *Actions) IsPlayerAutoMoving() bool {
 	return len(a.playerPath) > 0
+}
+
+func (a *Actions) maneuverAction(direction geometry.Point, playerDidMove bool) []common.Action {
+	var zeroDir geometry.Point
+	state := a.state
+
+	player := state.GetPlayer()
+	isMounted := player.HasLeader()
+
+	if !isMounted {
+		return nil
+	}
+
+	isWaitAction := direction == zeroDir
+
+	if playerDidMove || isWaitAction {
+		a.playerMoves = append(a.playerMoves, direction)
+	} else {
+		// this is a bump into something..
+		// if we trigger our pounding move, then this is a valid input.
+		// otherwise we'll reset our moves
+		if len(a.playerMoves) < 2 {
+			a.playerMoves = nil
+			return nil
+		}
+
+		if a.playerMoves[0] != a.playerMoves[1] || a.playerMoves[0] != direction {
+			a.playerMoves = nil
+			return nil
+		}
+
+		currentMap := state.GetMap()
+		currentPlayerPos := player.MapPosition()
+		poundPos := currentPlayerPos.Add(direction)
+		if !currentMap.IsActorAt(poundPos) {
+			a.playerMoves = nil
+			return nil
+		}
+
+		hitActor := currentMap.ActorAt(poundPos)
+
+		currentMap.SetActorToDowned(hitActor) // must this be an action?
+		a.msg(fmt.Sprintf("You pound %s to the ground", hitActor.Name()))
+		return []common.Action{
+			common.NewApplyStatusAction(common.AbstractCause("Knockback"), hitActor, common.StatusStunned, rand.Intn(3)+2),
+			//common.NewChangeResourceAction(common.AbstractCause("Knockback"), hitActor, stats.Health, -4),
+		}
+	}
+
+	if len(a.playerMoves) < 2 {
+		return nil
+	}
+	if len(a.playerMoves) > 2 {
+		a.playerMoves = a.playerMoves[1:]
+	}
+	lastDir := a.playerMoves[len(a.playerMoves)-1]
+	nextToLastDir := a.playerMoves[len(a.playerMoves)-2]
+
+	currentMap := state.GetMap()
+	if lastDir == zeroDir && nextToLastDir == zeroDir {
+		hitPositions := currentMap.NeighborsAll(player.MapPosition(), func(p geometry.Point) bool {
+			return currentMap.IsActorAt(p)
+		})
+		if len(hitPositions) > 0 {
+			a.msg("The hooves of your steed clap, like thunder!")
+			damage := rand.Intn(5) + 3
+			return []common.Action{
+				common.NewLightningAction(common.AbstractCause("Thunderclap"), player, hitPositions, damage),
+			}
+		}
+	}
+
+	if isWaitAction {
+		a.playerMoves = nil
+		return nil
+	}
+	// patterns
+	// wait, wait
+	// direction, reversed-direction
+	// direction, direction
+
+	if lastDir.IsOpposite(nextToLastDir) {
+		currentPlayerPos := player.MapPosition()
+		kickPos := currentPlayerPos.Add(nextToLastDir.Mul(2))
+		if currentMap.IsActorAt(kickPos) {
+			hitActor := currentMap.ActorAt(kickPos)
+			a.msg(fmt.Sprintf("You kick %s", hitActor.Name()))
+			a.audio.PlayCue("black_death_kick")
+			return []common.Action{
+				common.NewKnockbackAction(common.AbstractCause("Knockback"), hitActor, nextToLastDir, 4),
+				common.NewChangeResourceAction(common.AbstractCause("Knockback"), hitActor, stats.Health, -3),
+			}
+		}
+	}
+	return nil
 }
 

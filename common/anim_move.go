@@ -10,6 +10,7 @@ type MovementAnimation struct {
 	ticksNeeded uint64
 	ticksAlive  uint64
 	isForPlayer bool
+	audioCue    string
 }
 
 func (m *MovementAnimation) Cancel() {
@@ -21,6 +22,9 @@ func (m *MovementAnimation) GetEndPos() geometry.Point {
 }
 func (m *MovementAnimation) finishAnimation() {
 	m.Cancel()
+}
+func (m *MovementAnimation) AudioCue() string {
+	return m.audioCue
 }
 
 func (m *MovementAnimation) Draw(renderer TileRenderer) {

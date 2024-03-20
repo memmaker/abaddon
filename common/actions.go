@@ -25,6 +25,8 @@ const (
 	ActionNameSpawnObject     ActionName = "ActionNameSpawnObject"
 	ActionNameUseItem         ActionName = "ActionNameUseItem"
 	ActionNameFireball        ActionName = "ActionNameFireball"
+	ActionNameLightning   ActionName = "ActionNameLightning"
+	ActionNameExplosion   ActionName = "ActionNameExplosion"
 
 	ActionNameDie               ActionName = "ActionNameDie"
 	ActionNameApplyStatusEffect ActionName = "ActionNameApplyStatusEffect"
@@ -75,7 +77,6 @@ type UserInterface interface {
 	OpenClassSelectionMenu()
 
 	// Action specific
-	Say(actor *Actor, linesOfText []string)
 	BeginTargeting(rules TargetRules, onHit *HitEffect)
 
 	// Vendor interactions
@@ -91,6 +92,7 @@ type UserInterface interface {
 	SetDebugActions(actions func() DebugActions)
 	FadeToBlack()
 	FadeFromBlack()
+	OpenCenteredTextWindowWithCallback(texts []util.LabelText, onClose func())
 
 }
 type ActionBroker interface {

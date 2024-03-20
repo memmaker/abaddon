@@ -10,6 +10,14 @@ type MeleeAttackAnimation struct {
 	origin      geometry.Point
 	ticksNeeded uint64
 	ticksLeft   uint64
+	audioCue    string
+}
+
+func (m *MeleeAttackAnimation) AudioCue() string {
+	if m.audioCue == "" {
+		return "melee_attack"
+	}
+	return m.audioCue
 }
 
 func (m *MeleeAttackAnimation) GetActor() *Actor {

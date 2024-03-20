@@ -1,0 +1,73 @@
+== Big List of Spells
+
+Fire - Damage over Time
+
+Ice - Freeze
+
+Lighting - Chain
+
+Gravitation - Force flying enemies to the ground, trigger traps!
+
+Immolation - Make enemies explode on death
+
+Shuffle - Randomly repositions everyone on this floor
+
+Paired teleport - Teleports you and one target to random locations
+
+Swap Position - Swaps your position with a target
+
+Pull - Pulls a target towards you
+
+Push - Pushes a target away from you
+
+Implosion - Pulls all targets towards a target position
+
+Explosion - Pushes all targets away from a target position
+
+Gust of Wind - Pushes all targets in the same direction
+
+Floor break - Creates a chasm
+
+Ceiling break - Will destroy the ceiling to create random walls and transport monster from above to this level
+
+Flatten - Remove all walls in an area
+
+Create oil - Will create a slippery, flammable area
+
+Create fire - Will create a damaging area
+
+Create water - Will create a slowing area
+
+Create spikes - Will create a damaging area
+
+Pacify - Remove all hazards & neutralize all enemies
+
+Raise Hell - Create random hazards and make all enemies begin in-fighting
+
+Jumpstart
+
+Multi-Shot
+
+Telefrag
+
+Earthquake
+
+Earth Shaker
+
+Inverter Walls<->Floors
+
+Inverter Water<->Lava
+
+Firestarter: Trigger all visible barrels
+
+Last rite
+Self-destruct in gory explosion
+
+Hooves of Hell
+Move towards an enemy and then away from him when he is next to you. Trigger horse kick with knockback.
+
+Pounding
+Move in a straight line towards an enemy twice, a third move in the same direction can now pin an enemy on the target tile.
+
+Thunderstruck
+Pay some health and wait a turn for an aoe lightning attack on all neighboring tiles

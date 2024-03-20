@@ -130,6 +130,33 @@ func (p Point) RotateRight() Point {
 	}
 }
 
+func (p Point) IsOpposite(direction Point) bool {
+	return p.X == -direction.X && p.Y == -direction.Y
+}
+
+func (p Point) ToCompassDirection() Point {
+	// make sure that this directional vector
+	// is either a cardinal or ordinal direction
+	absX := Abs(p.X)
+	absY := Abs(p.Y)
+
+	if absX < 2 && absY < 2 {
+		return p
+	}
+
+	ratio := float64(absX) / float64(absY)
+	if ratio > 1.5 {
+		return Point{X: p.X, Y: 0}
+	} else if ratio < 0.5 {
+		return Point{X: 0, Y: p.Y}
+	}
+
+	signX := sign(p.X)
+	signY := sign(p.Y)
+
+	return Point{X: signX, Y: signY}
+}
+
 func NewPointFromEncodedString(encoded string) (Point, error) {
 	var x, y int
 	_, err := fmt.Sscanf(encoded, "(%d,%d)", &x, &y)

@@ -17,6 +17,10 @@ type SpeechAnimation struct {
 	actor            *Actor
 }
 
+func (m *SpeechAnimation) AudioCue() string {
+	return ""
+}
+
 func (m *SpeechAnimation) GetActor() *Actor {
 	return nil
 }

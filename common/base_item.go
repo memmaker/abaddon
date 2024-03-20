@@ -22,7 +22,6 @@ const (
 type ArmorStats struct {
 	BaseArmor  int
 	Type       defs.ArmorType
-	Durability *stats.Resource
 	Plus       int
 }
 
@@ -38,10 +37,6 @@ func (s ArmorStats) ToString(player *Actor) []util.LabelText {
 		},
 		util.LabelText{
 			Text:      fmt.Sprintf("Enchantment: +%d", s.Plus),
-			TextColor: defs.OffWhite,
-		},
-		util.LabelText{
-			Text:      fmt.Sprintf("Durability: %s", s.Durability.ToString()),
 			TextColor: defs.OffWhite,
 		},
 	}
@@ -60,7 +55,6 @@ func (s ArmorStats) Clone() *ArmorStats {
 	return &ArmorStats{
 		BaseArmor:  s.BaseArmor,
 		Type:       s.Type,
-		Durability: stats.NewResource(s.Durability.Min(), s.Durability.GetMax, s.Durability.Value()),
 		Plus:       s.Plus,
 	}
 }
@@ -105,15 +99,17 @@ type Item struct {
 	shouldBeDrawn   bool
 	baseCost        int
 
-	forcedTooltip     []util.LabelText
-	itemHooks         []ItemActionHook
-	targetedAction    *TargetedAction
-	untargetedAction  *UntargetedAction
-	actionCharges     int
-	destroyAfterUse   bool
-	nameOnlyInTooltip bool
-	internalName      string
-	isQuestItem       bool
+	forcedTooltip      []util.LabelText
+	itemHooks          []ItemActionHook
+	targetedAction     *TargetedAction
+	untargetedAction   *UntargetedAction
+	actionCharges      int
+	destroyAfterUse    bool
+	nameOnlyInTooltip  bool
+	internalName       string
+	isQuestItem        bool
+	dynamicDescription func(player *Actor) []util.LabelText
+	isMetal            bool
 }
 
 func NewItem(getPlayerRef func() *Actor, name string, icon int32) *Item {
@@ -131,14 +127,6 @@ func (i *Item) SetDrawnToScreen(shouldBeDrawn bool) {
 
 func (i *Item) IsDrawn() bool {
 	return i.shouldBeDrawn
-}
-func (i *Item) IsModifyingLight() bool {
-	for _, modifier := range i.equippedModifiers {
-		if modifier.Attribute == stats.LightRadius {
-			return true
-		}
-	}
-	return false
 }
 
 func (i *Item) SetIcon(icon int32) {
@@ -182,16 +170,16 @@ func (i *Item) Counter() int {
 func (i *Item) BuyPrice() int {
 	itemPrice := i.baseCost
 	if i.IsArmor() {
-		pricePerPlus := 35
+		pricePerPlus := 6
 		plusValue := i.armorComponent.Plus * pricePerPlus
 		itemPrice += plusValue
 	}
 	if i.IsWeapon() {
-		pricePerPlus := 45
+		pricePerPlus := 10
 		plusValue := i.weaponComponent.Plus * pricePerPlus
 		itemPrice += plusValue
 	}
-	chargeMultiplier := 20 // for infinite charges
+	chargeMultiplier := 7 // for infinite charges
 	if !i.HasInfiniteCharges() {
 		chargeMultiplier = i.GetCharges()
 	}
@@ -206,7 +194,7 @@ func (i *Item) BuyPrice() int {
 			itemPrice += m.GetMonetaryValue()
 		}
 	}
-	return itemPrice
+	return geometry.Abs(itemPrice)
 }
 func (i *Item) InventoryIcon() int32 {
 	return i.icon
@@ -230,10 +218,6 @@ func (i *Item) TintColor() color.RGBA {
 }
 
 func (i *Item) categoryColor() color.RGBA {
-	if i.IsLightSource() {
-		return defs.InvColorLightSource
-	}
-
 	if i.IsRing() {
 		return defs.InvColorRing
 	}
@@ -294,9 +278,6 @@ func (i *Item) IsRangedWeapon() bool {
 }
 
 func (i *Item) SlotName() defs.SlotName {
-	if i.IsLightSource() {
-		return defs.SlotNameLightSource
-	}
 	if i.IsRangedWeapon() {
 		return defs.SlotNameMissileLauncher
 	}
@@ -389,10 +370,6 @@ func (i *Item) GetArmorStatsAsString() []util.LabelText {
 
 func (i *Item) SetCategory(category defs.ItemCategory) {
 	i.category = category
-}
-
-func (i *Item) IsLightSource() bool {
-	return i.lightComponent != nil
 }
 
 func (i *Item) SetThrowComponent(throwComponent *ThrowStats) {
@@ -521,7 +498,7 @@ func (i *Item) GetItemHooks() []ItemActionHook {
 	return i.itemHooks
 }
 func (i *Item) GetTooltipLines(func(string) []util.ColoredTextPart) []util.LabelText {
-	info := []util.LabelText{util.LabelTextFromStringWithColor(i.Name(), defs.OffWhite)}
+	info := []util.LabelText{util.LabelTextFromStringWithColor(i.Name(), i.TintColor())}
 
 	if i.nameOnlyInTooltip {
 		return info
@@ -537,14 +514,7 @@ func (i *Item) GetTooltipLines(func(string) []util.ColoredTextPart) []util.Label
 			handedNess = "Two-Handed"
 		}
 		mrType := "melee"
-		useText := []util.LabelText{util.LabelTextFromString("Move into an enemy to attack")}
-		if i.IsRangedWeapon() {
-			mrType = "ranged"
-			useText = []util.LabelText{util.LabelTextFromString("Press \"f\" to aim and fire"), util.LabelTextFromString("Press \"q\" for quickfire")}
-		}
 		info = append(info, util.LabelTextFromString(fmt.Sprintf("%s %s weapon", handedNess, mrType)))
-		info = append(info, util.LabelTextFromString(""))
-		info = append(info, useText...)
 		info = append(info, util.LabelTextFromString(""))
 		info = append(info, i.GetWeaponStatsAsString()...)
 	}
@@ -596,21 +566,16 @@ func (i *Item) GetTooltipLines(func(string) []util.ColoredTextPart) []util.Label
 
 	}
 
-	if i.IsLightSource() {
-		info = append(info, util.LabelTextFromString(""))
-		if i.HasInfiniteCharges() {
-			info = append(info, util.LabelTextFromString(fmt.Sprintf("Provides light")))
-		} else {
-			info = append(info, util.LabelTextFromString(fmt.Sprintf("Provides light for %d turns", i.GetCharges())))
-		}
-	}
-
 	if i.IsThrowable() {
 		info = append(info, util.LabelTextFromString(""))
 		info = append(info, util.LabelTextFromString(fmt.Sprintf("Can be thrown")))
-		info = append(info, util.LabelTextFromString(fmt.Sprintf("Press \"v\" to throw an item")))
 		info = append(info, util.LabelTextFromString(""))
 		info = append(info, i.GetThrowStats().ToLabelText()...)
+	}
+
+	if i.dynamicDescription != nil {
+		info = append(info, util.LabelTextFromString(""))
+		info = append(info,i.dynamicDescription(i.getPlayer())...)
 	}
 
 	return info
@@ -658,7 +623,7 @@ func (i *Item) AddItemhook(hookToAdd ItemActionHook) {
 }
 
 func (i *Item) IsEquippable() bool {
-	return i.IsArmor() || i.IsWeapon() || i.IsLightSource() || i.IsAccessory() || i.IsThrowable()
+	return i.IsArmor() || i.IsWeapon() || i.IsAccessory()
 }
 
 func (i *Item) HasTargetedAction() bool {
@@ -714,10 +679,6 @@ func (i *Item) BandStyleName() string {
 	if i.IsArmor() {
 		armorValues := i.GetArmorStats().NameParts()
 		name = fmt.Sprintf("%s %s", name, armorValues)
-	}
-
-	if i.IsLightSource() && !i.HasInfiniteCharges() {
-		name = fmt.Sprintf("%s (%d turns)", name, i.GetCharges())
 	}
 
 	return name
@@ -804,18 +765,6 @@ func (i *Item) IsShield() bool {
 	return i.IsArmor() && i.GetArmorStats().Type == defs.ArmorTypeShield
 }
 
-func (i *Item) Repair() {
-	if i.IsArmor() {
-		i.GetArmorStats().Durability.SetToMax()
-	}
-	if i.IsWeapon() {
-		i.GetWeaponStats().Durability.SetToMax()
-	}
-}
-
-func (i *Item) IsFood() bool {
-	return i.GetItemType() == defs.ItemCategoryFood
-}
 
 func (i *Item) HasModifiers() bool {
 	return len(i.equippedModifiers) > 0
@@ -825,6 +774,13 @@ func (i *Item) IsQuestItem() bool {
 	return i.isQuestItem
 }
 
+func (i *Item) SetDynamicDescription(getDescription func(player *Actor) []util.LabelText) {
+	i.dynamicDescription = getDescription
+}
+
+func (i *Item) IsConductor() bool {
+	return i.isMetal
+}
 
 type Enchantment interface {
 	ToString() string

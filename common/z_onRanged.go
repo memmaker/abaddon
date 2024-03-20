@@ -22,9 +22,6 @@ func NewMainOnRangedHook() *OnRangedHook {
 		ItemHook: ItemHook{
 			HookedAction: ActionNameRangedAttack,
 			AfterHook: func(context *ItemContext, action Action, actionContext ActionContext) []Action {
-				rangedAction := action.(*RangedAttackAction)
-				actor := rangedAction.GetAttacker()
-				handleStealResource(actor, rangedAction)
 				return nil
 			},
 		},

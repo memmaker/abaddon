@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
@@ -25,4 +26,16 @@ func MustOpenReader(filename string) io.ReadCloser {
 		log.Fatal(fmt.Errorf("failed to open file '%s': %w", filename, err))
 	}
 	return f
+}
+
+func ReadAllLines(filename string) []string {
+	file := MustOpenReader(filename)
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	var fileLines []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		fileLines = append(fileLines, line)
+	}
+	return fileLines
 }

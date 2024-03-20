@@ -188,15 +188,6 @@ func (e *Equipment) HasMeleeWeaponEquipped() bool {
 	return (slotMain != nil && slotMain.IsMeleeWeapon()) || (slotOff != nil && slotOff.IsMeleeWeapon())
 }
 
-func (e *Equipment) HasLightSourceEquipped() bool {
-	lightSlot := e.GetBySlot(defs.SlotNameLightSource)
-	return lightSlot != nil && lightSlot.IsLightSource()
-}
-
-func (e *Equipment) GetLightSource() *Item {
-	return e.GetBySlot(defs.SlotNameLightSource)
-}
-
 func (e *Equipment) AllItems() []*Item {
 	var items []*Item
 	for _, item := range e.slots {

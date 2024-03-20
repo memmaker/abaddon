@@ -21,6 +21,10 @@ type ProjectileDirectionAnimation struct {
 	onFinish func()
 }
 
+func (m *ProjectileDirectionAnimation) AudioCue() string {
+	return "ranged_attack"
+}
+
 func (m *ProjectileDirectionAnimation) Cancel() {
 	if m.onCancel != nil {
 		m.onCancel()

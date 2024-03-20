@@ -11,7 +11,7 @@ type SpecialTileType uint64
 // These are markers, so we can identify special types of tiles programmatically.
 const (
 	SpecialTileNone SpecialTileType = iota
-	SpecialTileDamaging
+	SpecialTileSpikes
 	SpecialTileBreakable
 	SpecialTileBreakableGold
 	SpecialTileBreakableGems
@@ -21,6 +21,7 @@ const (
 	SpecialTileForest
 	SpecialTileMountain
 	SpecialTileWater
+	SpecialTileLava
 	SpecialTileChasm
 	SpecialTileSwamp
 	SpecialTileVoid

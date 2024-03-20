@@ -3,7 +3,9 @@ package common
 import (
 	"fmt"
 	"math/rand"
+	"rpg/audio"
 	"rpg/defs"
+	"rpg/geometry"
 	"rpg/stats"
 	"rpg/util"
 )
@@ -20,6 +22,7 @@ type Factory struct {
 	getTimeKeeper           func() *TimeKeeper
 	logError                func(msg string)
 	queueAfterTurn          func(func())
+	audioPlayer             *audio.Player
 }
 
 type FactoryContext struct {
@@ -48,7 +51,9 @@ func NewFactory(context FactoryContext) *Factory {
 func (g *Factory) NewRandomEnemy(dungeonLevel int) (*Actor, []defs.EnemyDefinition) {
 	// get defs
 	enemyDefinitions := g.definitions.EnemyDefinitions
-
+	if dungeonLevel == 0 {
+		dungeonLevel = 6
+	}
 	// filter for dungeon level
 	var filteredEnemies []defs.EnemyDefinition
 	for _, enemyDef := range enemyDefinitions {
@@ -94,6 +99,34 @@ func (g *Factory) NewUniqueItemFromName(name string) *Item {
 	if itemDef, ok := uniqueDefs[name]; ok {
 		item := g.NewItemFromDefinition(itemDef, 1)
 		item.SetRarity(ItemRarityUnique)
+
+		// 7drl hack
+		if name == "sword_of_vengeance" {
+			item.SetDynamicDescription(func(player *Actor) []util.LabelText {
+				damageBonus := GetVengeanceDamageBonus(player)
+				playerStats := player.GetStats()
+				vengeanceDamageDealt := playerStats.GetAttribute(stats.Blood)
+				return []util.LabelText{
+					{
+						Text:               "A sword that thirsts for revenge.",
+					},
+					{
+						Text:               fmt.Sprintf("It has drained %d liters of blood from your enemies.", vengeanceDamageDealt),
+					},
+					{
+						Text:               fmt.Sprintf("It receives +%d damage dice, because of that.", damageBonus),
+					},
+				}
+			})
+			weaponPart := item.GetWeaponStats()
+			specialWeaponPart := weaponPart.WithSpecialDamageDice(func(player *Actor) util.Dice {
+				defaultDamage := weaponPart.Damage
+				damageBonus := GetVengeanceDamageBonus(player)
+				vengeanceDamage := defaultDamage.WithAddedDice(damageBonus)
+				return vengeanceDamage
+			})
+			item.SetWeaponComponent(&specialWeaponPart)
+		}
 		return item
 	}
 
@@ -105,7 +138,24 @@ func (g *Factory) NewUniqueEnemyFromName(name string) *Actor {
 	uniqueDefs := g.definitions.UniqueEnemyDefinitions
 
 	if enemyDef, ok := uniqueDefs[name]; ok {
-		return g.NewEnemyFromDefinition(enemyDef, 1)
+		enemy := g.NewEnemyFromDefinition(enemyDef, 1)
+
+		if name == "kirioth" {
+			enemy.SetSpeechForTrigger(defs.SpeechTriggerHurtInTown, []string{
+				"You cannot hurt me up here!",
+				"The magic of this town and my people protects me",
+				"Leave this place, or face the consequences!",
+				"Demon, you are not welcome here!",
+				"The Sun protects me!",
+				"Never will you harm me in this place!",
+				"I only fear the pits of hell!",
+				"You will never drag me down to hell!",
+			})
+		}
+
+		return enemy
+
+
 	}
 
 	return nil
@@ -121,7 +171,7 @@ func (g *Factory) NewEnemyFromDefinition(enemyDef defs.EnemyDefinition, dungeonL
 	actor.SetName(enemyDef.Name)
 	actor.SetInternalName(enemyDef.InternalName)
 	actor.SetDeathStringFormats(enemyDef.DeathStringFormats)
-	actor.SetHostile()
+	actor.SetMonsterFaction()
 
 	if enemyDef.Tags.Has(defs.TagUnique) {
 		actor.SetUnique()
@@ -132,6 +182,10 @@ func (g *Factory) NewEnemyFromDefinition(enemyDef defs.EnemyDefinition, dungeonL
 	if enemyDef.Tags.Has(defs.TagFlying) {
 		actor.AddStatusEffect(StatusFlying, -1)
 	}
+	if enemyDef.Tags.Has(defs.TagWinCondition) {
+		actor.AddStatusEffect(StatusWinCondition, -1)
+	}
+
 	for trigger, lines := range enemyDef.Speech {
 		actor.SetSpeechForTrigger(trigger, lines)
 	}
@@ -183,19 +237,13 @@ func (g *Factory) GenerateLoot(dungeonLevel int) *Item {
 	diceRoll := source.Intn(100)
 	var addedItem *Item
 	switch {
-	case diceRoll >= 0 && diceRoll < 10:
-		addedItem = g.NewRandomWeapon(dungeonLevel)
-	case diceRoll >= 10 && diceRoll < 20:
+	case diceRoll >= 0 && diceRoll < 20:
 		addedItem = g.NewRandomArmorPiece(dungeonLevel)
-	case diceRoll >= 20 && diceRoll < 30:
-		addedItem = g.NewRandomAccessory(dungeonLevel)
-	case diceRoll >= 30 && diceRoll < 40:
-		addedItem = g.NewRandomLightSource(dungeonLevel)
+	case diceRoll >= 20 && diceRoll < 40:
+		addedItem = g.NewRandomRing(dungeonLevel)
 	case diceRoll >= 40 && diceRoll < 60:
-		addedItem = g.NewRandomWand(dungeonLevel)
-	case diceRoll >= 60 && diceRoll < 80:
 		addedItem = g.NewRandomPotion(dungeonLevel)
-	case diceRoll >= 80 && diceRoll < 100:
+	case diceRoll >= 60 && diceRoll < 100:
 		addedItem = g.NewRandomScroll(dungeonLevel)
 	}
 	return addedItem
@@ -212,7 +260,7 @@ func (g *Factory) GenerateMagicItem(dungeonLevel int) *Item {
 	case diceRoll >= 40 && diceRoll < 80:
 		addedItem = g.NewRandomArmorPiece(dungeonLevel)
 	default:
-		addedItem = g.NewRandomAccessory(dungeonLevel)
+		addedItem = g.NewRandomRing(dungeonLevel)
 	}
 	return addedItem
 }
@@ -331,7 +379,6 @@ func (g *Factory) NewItemFromDefinition(itemDefinition defs.ItemDefinition, dung
 	if itemDefinition.Armor.IsValid() {
 		armorPart := &ArmorStats{
 			BaseArmor:  itemDefinition.Armor.ArmorClass.LinearRandom(),
-			Durability: stats.NewResource(0, flatFunc(20), 20),
 			Type:       itemDefinition.Armor.ArmorType,
 		}
 		baseItem.SetArmorComponent(armorPart)
@@ -340,8 +387,6 @@ func (g *Factory) NewItemFromDefinition(itemDefinition defs.ItemDefinition, dung
 	if itemDefinition.Weapon.IsValid() {
 		weaponPart := &WeaponStats{
 			Damage:             itemDefinition.Weapon.Damage,
-			Requirements:       nil, // TODO
-			Durability:         stats.NewResource(0, flatFunc(20), 20),
 			Type:               itemDefinition.Weapon.WeaponType,
 			AttackSpeedFactor:  itemDefinition.Weapon.Speed,
 			MeleeRange:         1, // currently unused
@@ -367,15 +412,6 @@ func (g *Factory) NewItemFromDefinition(itemDefinition defs.ItemDefinition, dung
 			}
 			baseItem.SetThrowComponent(throwPart)
 		}
-	}
-
-	if itemDefinition.Light.IsValid() {
-		lightPart := &LightStats{
-			LightColor:        util.GetColorFromRGBString(itemDefinition.Light.LightColor),
-			FlickerPattern:    GetFlickerPatternFromName(itemDefinition.Light.FlickerPattern),
-			FlickerFrameDelay: itemDefinition.Light.FlickerFrameDelay,
-		}
-		baseItem.SetLightComponent(lightPart)
 	}
 
 	for _, modifierName := range itemDefinition.Modifiers {
@@ -419,30 +455,6 @@ func (g *Factory) NewItemFromDefinition(itemDefinition defs.ItemDefinition, dung
 	return baseItem
 }
 
-func (g *Factory) NewRandomLightSource(dungeonLevel int) *Item {
-	// get defs
-	itemDefinitions := g.definitions.ItemDefinitions
-
-	// filter for dungeon level
-	var filtered []defs.ItemDefinition
-	for _, itemDef := range itemDefinitions {
-
-		if !itemDef.IsLightSource() || !itemDef.CanAppearAt(g.randomSource, dungeonLevel) {
-			continue
-		}
-
-		filtered = append(filtered, itemDef)
-	}
-
-	if len(filtered) == 0 {
-		g.logError(fmt.Sprintf("no light source found for dungeon level %d", dungeonLevel))
-		return nil
-	}
-	// pick random type
-	accessory := filtered[g.randomSource.Intn(len(filtered))]
-	return g.NewItemFromDefinition(accessory, dungeonLevel)
-}
-
 func GetFlickerPatternFromName(pattern string) []float64 {
 	switch pattern {
 	case "fire":
@@ -455,7 +467,11 @@ func GetFlickerPatternFromName(pattern string) []float64 {
 
 func (g *Factory) NewItemFromDefinitionName(itemString string, dungeonLevel int) *Item {
 	if def, exists := g.definitions.ItemDefinitions[itemString]; exists {
-		return g.NewItemFromDefinition(def, dungeonLevel)
+		newItem := g.NewItemFromDefinition(def, dungeonLevel)
+		if newItem == nil {
+			g.logError(fmt.Sprintf("could not create item from definition %s", itemString))
+		}
+		return newItem
 	}
 	g.logError(fmt.Sprintf("Unknown item def: %s", itemString))
 	return nil
@@ -476,10 +492,15 @@ func (g *Factory) NewTargetedActionFromName(name string) *TargetedAction {
 }
 
 func (g *Factory) NewTargetedActionFromDefinition(definition defs.TargetedActionDefinition, args util.Arguments) *TargetedAction {
+	hitEffect := g.NewOnHitEffectFromNameAndArgs(definition.OnHitEffect, args)
+	if hitEffect == nil {
+		g.logError(fmt.Sprintf("Unknown on hit effect: %s", definition.OnHitEffect))
+		return nil
+	}
 	targetedAction := NewTargetedAction(
 		definition.Name,
 		HitZoneFromString(g.state.GetMap, definition.HitZone),
-		g.NewOnHitEffectFromNameAndArgs(definition.OnHitEffect, args),
+		hitEffect,
 		NewTargetingRulesFromString(definition.Targeting),
 	)
 
@@ -503,8 +524,10 @@ func (g *Factory) GetAllHitEffects() map[string]func(args util.Arguments) *HitEf
 		"steal_item":          g.stealItem,
 		"steal_item_teleport": g.stealItemAndTeleport,
 		"mind_push":           g.mindPush,
+		"bridge_chasm":        g.bridge,
 		"blink":               g.blink,
 		"earthshaker":         g.earthShaker,
+		"break_floor":         g.breakFloor,
 	}
 }
 
@@ -568,7 +591,7 @@ func (g *Factory) NewRandomArmorPiece(dungeonLevel int) *Item {
 	return newArmor
 }
 
-func (g *Factory) NewRandomAccessory(dungeonLevel int) *Item {
+func (g *Factory) NewRandomRing(dungeonLevel int) *Item {
 	// get defs
 	itemDefinitions := g.definitions.ItemDefinitions
 
@@ -576,7 +599,7 @@ func (g *Factory) NewRandomAccessory(dungeonLevel int) *Item {
 	var filtered []defs.ItemDefinition
 	for _, itemDef := range itemDefinitions {
 
-		if (!itemDef.IsRing() && !itemDef.IsAmulet()) || !itemDef.CanAppearAt(g.randomSource, dungeonLevel) {
+		if (!itemDef.IsRing()) || !itemDef.CanAppearAt(g.randomSource, dungeonLevel) {
 			continue
 		}
 
@@ -654,7 +677,9 @@ func (g *Factory) NewEtherealTargetedWand(targetedAction *TargetedAction) *Item 
 	return g.NewTargetedWand(targetedAction, 5, true)
 }
 func (g *Factory) NewInfiniteUntargetedWand(untargetedAction *UntargetedAction) *Item {
-	return g.NewUntargetedWand(untargetedAction, -1, false)
+	wand := g.NewUntargetedWand(untargetedAction, -1, false)
+	wand.SetInternalName("wand_of_" + untargetedAction.GetInternalName())
+	return wand
 }
 
 func (g *Factory) NewFiniteUntargetedWand(untargetedAction *UntargetedAction) *Item {
@@ -691,7 +716,12 @@ func (g *Factory) GetRandomUntargetedAction(dungeonLevel int, actionUsage defs.A
 	possibleActions := make([]*UntargetedAction, 0)
 	for _, def := range g.definitions.UntargetedDefinitions {
 		if def.DungeonLevel <= dungeonLevel && def.AllowedUsage.Allows(actionUsage) {
-			possibleActions = append(possibleActions, g.NewUntargetedActionFromDefinition(def, def.DefaultArgs))
+			action := g.NewUntargetedActionFromDefinition(def, def.DefaultArgs)
+			if action != nil {
+				possibleActions = append(possibleActions, action)
+			} else {
+				g.logError(fmt.Sprintf("no untargeted action found for dungeon level %d", dungeonLevel))
+			}
 		}
 	}
 
@@ -731,20 +761,17 @@ func (g *Factory) UntargetedEffectFromName(name string, args util.Arguments) *Un
 
 func (g *Factory) GetAllUntargetedEffects() map[string]func(args util.Arguments) UntargetedEffect {
 	return map[string]func(args util.Arguments) UntargetedEffect{
-		string(ActionNameHealHealthAndMana): g.getHealHealthAndMana,
-		string(ActionNameHealHealth):        g.getHealHealthBy,
-		string(ActionNameBerserk):           g.getBerserkSelfAction,
-		string(ActionNameApplyStatusSelf):   g.getApplyStatusAction,
-		string(ActionNameHealMana):          g.getHealManaBy,
-		string(ActionNameTeleport):          g.getRandomTeleportAction,
-		string(ActionNameBuffSpeed):         g.getSpeedBuff,
-		string(ActionNameBuffDamage):        g.getDamageBuff,
-		string(ActionNameRecall):            g.getPlayerRecallAction,
-		string(ActionNameBless):             g.getBlessing,
-		string(ActionNameStoneSkin):         g.getStoneSkinBuff,
-		string(ActionNameEnchantWeapon):     g.getEnchantWeapon,
-		string(ActionNameEnchantArmor):      g.getEnchantArmor,
-		string(ActionNameAcquirement):       g.getAcquirement,
+		string(ActionNameFirestarter):     g.getFirestarter,
+		string(ActionNameBerserk):         g.getBerserkSelfAction,
+		string(ActionNameApplyStatusSelf): g.getApplyStatusAction,
+		string(ActionNameTeleport):        g.getRandomTeleportAction,
+		string(ActionNameBuffSpeed):       g.getSpeedBuff,
+		string(ActionNameRecall):          g.getPlayerRecallAction,
+		string(ActionNameBless):           g.getBlessing,
+		string(ActionNameStoneSkin):       g.getStoneSkinBuff,
+		string(ActionNameEnchantWeapon):   g.getEnchantWeapon,
+		string(ActionNameEnchantArmor):    g.getEnchantArmor,
+		string(ActionNameAcquirement):     g.getAcquirement,
 		string(ActionNameMultiShot):         g.getMultiShot,
 		string(ActionNameTelefrag):          g.getRandomTelefragAction,
 		string(ActionNameReplicate):         g.getReplicate,
@@ -853,6 +880,9 @@ func (g *Factory) SetQueueAfterTurn(afterTurn func(call func())) {
 	g.queueAfterTurn = afterTurn
 }
 
+func (g *Factory) SetAudioPlayer(player *audio.Player) {
+	g.audioPlayer = player
+}
 func (g *Factory) SetUserInterface(ui func() UserInterface) {
 	g.gui = ui
 }
@@ -861,4 +891,12 @@ func (g *Factory) NewPoisonedEffect(turnsLeft int, damagePerRound int) *Parametr
 	return NewParametrizedStatusEffect(StatusDamageOverTime, func(a *Actor) {
 		g.actionBroker.Execute(NewChangeResourceAction(AbstractCause("poison"), a, stats.Health, float64(-damagePerRound)))
 	}, turnsLeft)
+}
+
+func (g *Factory) NewBarrel() Object {
+	barrel := NewExplodingBarrel(func(target geometry.Point) {
+		g.state.currentMap.RemoveObjectAt(target)
+		g.actionBroker.QueueForExecution(NewExplosionAction(AbstractCause("Barrel"), target, 3, 3, 5))
+	})
+	return barrel
 }

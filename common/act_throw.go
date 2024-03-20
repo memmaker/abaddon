@@ -64,6 +64,10 @@ func (d *ThrowAction) Execute(context ActionContext) []Action {
 			actions = append(actions, NewChangeResourceAction(NewActorCause(ActionNameThrow, d.attacker), d.defender, stats.Health, float64(-damage)))
 			d.damageAmount += damage
 		}
+	} else if currentMap.IsObjectAt(d.targetPos) && throwInfo.Damage.NotZero() {
+		damage := throwInfo.Damage.PyramidRandom()
+		objectAt := currentMap.ObjectAt(d.targetPos)
+		objectAt.DamageReceived(damage)
 	}
 	if throwInfo.OnHitEffect != nil { // apply generic effect at target location
 		hitLocations := throwInfo.HitZone.GetHitPositions(d.attacker.MapPosition(), d.targetPos)
@@ -116,24 +120,22 @@ func (d *ThrowAction) GetTargetPos() geometry.Point {
 func CalculateThrowHitChance(attacker, defender *Actor) float64 {
 	distance := geometry.Distance(defender.MapPosition(), attacker.MapPosition())
 
-	dexModifier := float64(defaultModifierPattern(attacker.GetStats().GetAttribute(stats.Dexterity))) * 0.2
-	strModifier := float64(defaultModifierPattern(attacker.GetStats().GetAttribute(stats.Strength)))
 	// dex modifier only applies in full to skill based ranged weapons
 	// => in particular, crossbows don't get this penalty
 
 
-	maxRange := 10 + (2 * strModifier)
+	maxRange := 10.0
 	accuracyAtMaxRange := 0.5
 	accuracyAtMinRange := 0.9
 
 	if distance > maxRange {
 		dropOffPerTile := 0.3
 		delta := distance - maxRange
-		return util.Clamp(0.0, 1.0, accuracyAtMaxRange - (delta * dropOffPerTile) + dexModifier)
+		return util.Clamp(0.0, 1.0, accuracyAtMaxRange - (delta * dropOffPerTile))
 	}
 
 	if distance <= 1 {
-		return util.Clamp(0.0, 1.0, accuracyAtMinRange + dexModifier)
+		return util.Clamp(0.0, 1.0, accuracyAtMinRange)
 	}
 
 	// interpolate
@@ -141,7 +143,7 @@ func CalculateThrowHitChance(attacker, defender *Actor) float64 {
 	// min range == 2
 	normalizedMaxRange := maxRange - 1
 	percent := (distance - 1) / normalizedMaxRange
-	accuracy := util.Clamp(0.0, 1.0, accuracyAtMinRange + (percent * (accuracyAtMaxRange - accuracyAtMinRange)) + dexModifier)
+	accuracy := util.Clamp(0.0, 1.0, accuracyAtMinRange + (percent * (accuracyAtMaxRange - accuracyAtMinRange)))
 
 	return accuracy
 }

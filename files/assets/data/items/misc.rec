@@ -32,11 +32,3 @@ throw_hit_zone: dijkstra_aoe(1)
 throw_damage: 1-4
 throw_chance_to_break: 1.0
 throw_on_hit_effect: fire_zone(1d6)
-
-name: a ration of food
-internal_name: food
-icon: 307
-dlvl: 1
-cost: 3
-category: food
-

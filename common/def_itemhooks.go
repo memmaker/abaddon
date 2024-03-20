@@ -9,7 +9,6 @@ import (
 
 func NewHooksForItem(source *rand.Rand, level int, count int) []ItemActionHook {
 	hooksFactories := []func() ItemActionHook{
-		restoreManaOnKill,
 		fireballOnRanged,
 		returnDamageOnHit,
 		randomlyTripleDamageOnMelee,
@@ -28,10 +27,6 @@ func NewHooksForItem(source *rand.Rand, level int, count int) []ItemActionHook {
 
 func fireballOnRanged() ItemActionHook {
 	return NewOnRangedHook("cast fireball", fireBallOnRangedAttack)
-}
-
-func restoreManaOnKill() ItemActionHook {
-	return NewOnDieHook("restore 4 mana", manaForKills)
 }
 
 func returnDamageOnHit() ItemActionHook {
@@ -89,10 +84,4 @@ func fireBallOnRangedAttack(itemContext *ItemContext, action Action, context Act
 
 	cause := NewActorCause(ActionNameRangedAttack, attacker)
 	return OneAction(NewDamageSpellAction(cause, rangedAction.GetAttacker(), 8, targetPos, rangedTargetRules.GetHitpositions(targetPos)))
-}
-
-// stat change on kill
-func manaForKills(itemContext *ItemContext, action Action, context ActionContext) []Action {
-	amount := 4
-	return OneAction(NewChangeResourceAction(action.Cause(), itemContext.GetActor(), stats.Mana, float64(amount)))
 }

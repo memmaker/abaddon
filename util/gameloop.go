@@ -1,7 +1,5 @@
 package util
 
-import "time"
-
 // LoopConfig describes a configuration for a game loop.
 type LoopConfig struct {
 	// TargetFPS is used to calculate the seconds per update (1 / TargetFPS).
@@ -69,10 +67,6 @@ func CreateLoop(c LoopConfig, terminationCode *int) func() {
 				current = c.CurrentTimeFunc()
 				elapsed = current - previous
 				previous = current
-
-				if elapsed < secsPerUpdate {
-					time.Sleep(time.Second * time.Duration(secsPerUpdate - elapsed))
-				}
 			}
 
 

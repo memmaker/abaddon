@@ -63,8 +63,15 @@ func (u *UIController) Update() error {
 		u.mapRenderer.CenterOnFloat(player.DrawPosition())
 	}
 
-	for _, actor := range state.GetMap().Actors() {
-		actor.Tick()
+	currentMap := state.GetMap()
+	actors := currentMap.Actors()
+	for i := len(actors) - 1; i >= 0; i-- {
+		actor := actors[i]
+		if actor.IsAlive() {
+			actor.Tick()
+		} else {
+			currentMap.SetActorToDowned(actor)
+		}
 	}
 
 	return nil
