@@ -3,7 +3,6 @@ package game
 import (
 	"cmp"
 	"fmt"
-	"github.com/flopp/go-findfont"
 	"math"
 	"math/rand"
 	"os"
@@ -674,7 +673,7 @@ func (g *GameInstance) showDebugMenu() {
 		{
 			MainText: "Test Font Loading",
 			Action: func() {
-				foundFonts := findfont.List()
+				foundFonts := listFonts()
 				for _, fontFile := range foundFonts {
 					if strings.HasSuffix(fontFile, ".ttf") {
 						g.PlayerMessage(fontFile)
