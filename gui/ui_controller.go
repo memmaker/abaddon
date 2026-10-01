@@ -1271,9 +1271,7 @@ func (u *UIController) UpdateStatsLabel() {
 	player := state.GetPlayer()
 	playerStats := player.GetStats()
 	var hpColor color.Color
-	var manaColor color.Color
 	hpColor = defs.DarkTextColor
-	manaColor = defs.DarkTextColor
 
 	if playerStats.GetResource(stats.Health).IsLessThanPercent(0.25) {
 		hpColor = color.RGBA{R: 255, G: 30, B: 30, A: 255}
@@ -1283,27 +1281,13 @@ func (u *UIController) UpdateStatsLabel() {
 		hpColor = color.RGBA{R: 255, G: 255, B: 30, A: 255}
 	}
 
-	if playerStats.GetResource(stats.Mana).IsLessThanPercent(0.25) {
-		manaColor = color.RGBA{R: 255, G: 30, B: 30, A: 255}
-	} else if playerStats.GetResource(stats.Mana).IsLessThanPercent(0.5) {
-		manaColor = color.RGBA{R: 255, G: 150, B: 30, A: 255}
-	} else if playerStats.GetResource(stats.Mana).IsLessThanPercent(0.75) {
-		manaColor = color.RGBA{R: 255, G: 255, B: 30, A: 255}
-	}
 	label := u.statsLabel
 	mapNameParts := util.ToLabelTextWithColor(strings.Split(state.GetMap().GetDisplayName(), "\n"), defs.DarkTextColor)
+	// 7DRL: finite health, no mana or gold in the HUD
 	statusParts := []util.LabelText{
 		{
-			Text:      fmt.Sprintf("HP: %s", playerStats.GetResource(stats.Health).ToString()),
+			Text:      fmt.Sprintf("Life: %d", playerStats.GetResource(stats.Health).Value()),
 			TextColor: hpColor,
-		},
-		{
-			Text:      fmt.Sprintf("MP: %s", playerStats.GetResource(stats.Mana).ToString()),
-			TextColor: manaColor,
-		},
-		{
-			Text:      fmt.Sprintf("Gold: %d", playerStats.GetAttribute(stats.Gold)),
-			TextColor: defs.DarkTextColor,
 		},
 	}
 	statLines := append(mapNameParts, statusParts...)

@@ -38,7 +38,7 @@ func createGameAndUIContext() (*game.GameInstance, common.UIContext) {
 			TTFSize: userConfig.DefaultFontSize,
 		},
 		UserConfiguration: userConfig,
-		FileSystem: files.GetFileSystem(),
+		FileSystem:        files.GetFileSystem(),
 	}
 	theGame := game.NewGameInstance(startInfos, NewDummyUI())
 	uiContext := common.UIContext{
@@ -79,7 +79,7 @@ func runGameWithEbiten(theGame *game.GameInstance, context common.UIContext) {
 
 	screenSize := uiController.GetDeviceIndependentScreenSize()
 
-	ebiten.SetWindowTitle("Lux Aeterna")
+	ebiten.SetWindowTitle("Abaddon")
 	ebiten.SetWindowSize(screenSize.X, screenSize.Y)
 	ebiten.SetScreenClearedEveryFrame(true)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
@@ -93,4 +93,3 @@ func runGameWithEbiten(theGame *game.GameInstance, context common.UIContext) {
 		log.Fatal(err)
 	}
 }
-

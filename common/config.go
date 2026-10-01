@@ -153,7 +153,7 @@ func NewConfigurationFromRecFile(recFilename string) Configuration {
 	}
 
 	configuration := Configuration{
-		AudioEnabled:           configMap.GetBoolOrFalse("AudioEnabled"),
+		AudioEnabled:           configMap.GetBoolOrTrue("AudioEnabled"),
 		ActorBobbingEnabled:    configMap.GetBoolOrTrue("ActorBobbingEnabled"),
 		CardinalMovementOnly:   configMap.GetBoolOrFalse("CardinalMovementOnly"),
 		DefaultFont:            configMap.GetStringOrDefault("DefaultFont", "assets/fonts/Ac437_EagleSpCGA_Alt3.ttf"),

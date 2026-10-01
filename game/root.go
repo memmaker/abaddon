@@ -304,7 +304,7 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	})
 	g.state.SetOnMapChanged(g.onMapChanged)
 	g.state.MapTransition(gridmap.Transition{
-		TargetMap:      string(defs.LevelNameTown),
+		TargetMap:      string(defs.LevelNameTownHell), // 7DRL: the ride starts in hell
 		TargetLocation: "spawn",
 	})
 
@@ -365,6 +365,18 @@ func (g *GameInstance) SetAndInitUserInterface(ui common.UserInterface) {
 	ui.SetPlayerMessage(g.PlayerMessage)
 	ui.OnMapChanged()
 	ui.SetDebugActions(g.getDebugActions)
+	g.showQuest()
+}
+
+// showQuest opens the 7DRL story text (shipped build: on start and on F3).
+func (g *GameInstance) showQuest() {
+	lines := []util.LabelText{
+		util.LabelTextFromStringWithColor("Abaddon - a 7 day roguelike by Felix Ruzzoli", color.White),
+		util.LabelTextFromString(""),
+	}
+	lines = append(lines, common.NewDialogueTextFromFile("abaddon_quest.txt")...)
+	lines = append(lines, util.LabelTextFromString(""), util.LabelTextFromString("Press F1 during play for help"))
+	g.uiController.OpenTextWindow(lines)
 }
 func (g *GameInstance) queueAfterTurn(call func()) {
 	g.executeAfterTurn = append(g.executeAfterTurn, call)
@@ -466,7 +478,8 @@ func (g *GameInstance) createPlayer(playerStartDefinition defs.LoadoutDefinition
 	g.initPlayerSkills(player, playerStartDefinition.TargetedSkills, playerStartDefinition.UntargetedSkills)
 
 	// Starting gear
-	for _, itemName := range playerStartDefinition.Items {
+	// 7DRL: the Avenger always rides out with the sword "Vengeance" (reconstructed, the jam code is lost)
+	for _, itemName := range append([]string{"sword_of_vengeance"}, playerStartDefinition.Items...) {
 		item := g.factory.NewItemFromDefinitionName(itemName, 1)
 		if item != nil {
 			g.giveAndEquipItemToActor(player, item)

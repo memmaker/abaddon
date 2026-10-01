@@ -48,7 +48,7 @@ func runCommand(argCmd string) {
 }
 
 func showTitleScreen() {
-	logoFile := util.MustOpenReader(path.Join("assets","logo.txt"))
+	logoFile := util.MustOpenReader(path.Join("assets", "logo_7drl.txt"))
 	defer logoFile.Close()
 	//reader := bufio.NewReader(logoFile)
 	scanner := bufio.NewScanner(logoFile)
@@ -90,11 +90,11 @@ func showTitleScreen() {
 	for x, c := range prompt {
 		s.SetContent(centeredPrompt+x, promptStartY, c, nil, tcell.StyleDefault)
 	}
-	s.ShowCursor(centeredPrompt + len(prompt), promptStartY)
+	s.ShowCursor(centeredPrompt+len(prompt), promptStartY)
 	s.SetCursorStyle(tcell.CursorStyleBlinkingUnderline)
 	s.Show()
 	graphics := false
-	outerloop:
+outerloop:
 	for event := s.PollEvent(); event != nil; event = s.PollEvent() {
 		if ev, ok := event.(*tcell.EventKey); ok {
 			if ev.Key() == tcell.KeyRune {
@@ -125,7 +125,7 @@ func showTitleScreen() {
 	screen.Clear()
 	screen.MoveTopLeft()
 
-	messageFile := util.MustOpenReader(path.Join("assets","endMessage.txt"))
+	messageFile := util.MustOpenReader(path.Join("assets", "endMessage_7drl.txt"))
 	defer messageFile.Close()
 	//reader := bufio.NewReader(logoFile)
 	msgScanner := bufio.NewScanner(messageFile)
