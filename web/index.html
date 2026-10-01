@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Abaddon · Play</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #aaa; font: 14px monospace; overflow: hidden; }
+  #back { position: fixed; top: 8px; left: 12px; color: #888; text-decoration: none; z-index: 10; }
+  #back:hover { color: #fff; }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  canvas { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+</style>
+</head>
+<body>
+<a id="back" href="../">← back</a>
+<div id="loading">Loading…</div>
+<script src="../../progress.js" data-size="@SIZE@"></script>
+<script src="wasm_exec.js"></script>
+<script>
+  const go = new Go();
+  WebAssembly.instantiateStreaming(progressFetch("abaddon.wasm"), go.importObject)
+    .then(r => {
+      // Ebitengine creates its canvas once main() runs; drop the loading text when it appears.
+      new MutationObserver((_, o) => {
+        if (document.querySelector("canvas")) { document.getElementById("loading").remove(); o.disconnect(); }
+      }).observe(document.body, { childList: true, subtree: true });
+      go.run(r.instance);
+    })
+    .catch(e => { document.getElementById("loading").textContent = "Failed to load: " + e; });
+</script>
+</body>
+</html>

@@ -132,8 +132,9 @@ func (c Configuration) ToRecord() recfile.Record {
 
 func (c Configuration) SaveToRecFile(recFilename string) {
 	file, err := os.Create(recFilename)
-	if err != nil {
-		panic(err)
+	if err != nil { // e.g. no filesystem in the browser: keep running with the defaults
+		println("could not save " + recFilename + ": " + err.Error())
+		return
 	}
 	defer file.Close()
 	recfile.Write(file, []recfile.Record{c.ToRecord()})
