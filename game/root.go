@@ -482,6 +482,10 @@ func (g *GameInstance) createPlayer(playerStartDefinition defs.LoadoutDefinition
 	if vengeance := g.factory.NewUniqueItemFromName("sword_of_vengeance"); vengeance != nil {
 		g.giveAndEquipItemToActor(player, vengeance)
 	}
+	// ponytail: the jam data gives no light source and the jam lighting code is lost; a torch keeps dungeons playable
+	if torch := g.factory.NewItemFromDefinitionName("torch", 1); torch != nil {
+		g.giveAndEquipItemToActor(player, torch)
+	}
 	for _, itemName := range playerStartDefinition.Items {
 		item := g.factory.NewItemFromDefinitionName(itemName, 1)
 		if item != nil {
