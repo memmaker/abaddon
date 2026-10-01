@@ -479,7 +479,10 @@ func (g *GameInstance) createPlayer(playerStartDefinition defs.LoadoutDefinition
 
 	// Starting gear
 	// 7DRL: the Avenger always rides out with the sword "Vengeance" (reconstructed, the jam code is lost)
-	for _, itemName := range append([]string{"sword_of_vengeance"}, playerStartDefinition.Items...) {
+	if vengeance := g.factory.NewUniqueItemFromName("sword_of_vengeance"); vengeance != nil {
+		g.giveAndEquipItemToActor(player, vengeance)
+	}
+	for _, itemName := range playerStartDefinition.Items {
 		item := g.factory.NewItemFromDefinitionName(itemName, 1)
 		if item != nil {
 			g.giveAndEquipItemToActor(player, item)
