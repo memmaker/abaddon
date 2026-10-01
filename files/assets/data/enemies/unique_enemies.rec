@@ -1,6 +1,34 @@
 %rec: default
 #FIELDS: name internal_name icon dlvl out_of_depth_chance min_level_for_ood max_level base_speed damage_dice resource_health stats_armor_class stats_experience stats_strength stats_dexterity stats_intelligence equipment targeted_skill untargeted_skill group_spawn aggro_range tags speech_on_sight death_string
 
+name: Black Death
+internal_name: black_steed
+icon: 732
+dlvl: 8
+base_speed: 12
+damage_dice: 1d6
+resource_health: 666
+stats_armor_class: 6
+tags: unique | no_corpse
+
+
+name: Cerberus
+internal_name: cerberus
+icon: 343
+dlvl: 10
+base_speed: 10
+damage_dice: 1d6+2
+resource_health: 6d8
+stats_armor_class: 4
+stats_experience: 200
+stats_strength: 10
+stats_dexterity: 9
+stats_intelligence: 9
+tags: unique | no_corpse
+speech_on_sight: *woof*
+death_string: %s goes to dog heaven.
+
+
 name: Lucifer
 internal_name: lucifer
 icon: 261
@@ -13,7 +41,7 @@ stats_experience: 1200
 stats_strength: 18
 stats_dexterity: 18
 stats_intelligence: 18
-tags: unique | no_corpse
+tags: unique | no_corpse | flying
 speech_on_sight: I am the morning star!
 speech_on_sight: I am the fallen one!
 speech_on_sight: I am the lightbringer!
@@ -114,6 +142,7 @@ death_string: %s ascends forever.
 death_string: %s descends forever.
 death_string: %s quaffed his last potion.
 death_string: %s dies again.
+untargeted_skill: apply_berserk_self
 
 name: a rogue dog
 internal_name: rogue_dog
@@ -131,13 +160,13 @@ tags: unique | no_corpse
 speech_on_sight: f
 death_string: %s goes to dog heaven.
 
-name: the true Shekel
-internal_name: evil_shekel
+name: Elder Shekel
+internal_name: shekel
 icon: 287
 dlvl: 13
 base_speed: 11
 damage_dice: 1d6+2
-resource_health: 12d8
+resource_health: 42d8
 stats_armor_class: 5
 stats_experience: 200
 stats_strength: 14
@@ -146,22 +175,29 @@ stats_intelligence: 16
 tags: unique | no_corpse
 speech_on_sight: Your time has come!
 death_string: %s dies.
+targeted_skill: poison_target
 
-name: the true Kirioth
-internal_name: evil_kirioth
+name: King Kirioth
+internal_name: kirioth
 icon: 288
 dlvl: 12
 base_speed: 10
 damage_dice: 1d6
-resource_health: 12d8
+resource_health: 77d7
 stats_armor_class: 5
 stats_experience: 200
 stats_strength: 10
 stats_dexterity: 10
 stats_intelligence: 18
-tags: unique | no_corpse
+tags: unique | no_corpse | win_condition
 speech_on_sight: Your time has come!
-death_string: %s dies.
+speech_on_sight: I am the king!
+speech_on_sight: I am the ruler!
+speech_on_sight: Begone, peasant!
+speech_on_sight: Have at thee!
+speech_on_sight: Pathetic!
+death_string: %s dies. The blood on your hands is the blood of a king.
+targeted_skill: summon_monster
 
 name: a red knight
 internal_name: adventurer_knight
@@ -194,6 +230,7 @@ stats_intelligence: 9
 tags: unique | no_corpse
 speech_on_sight: Your time has come!
 death_string: %s dies.
+targeted_skill: confuse_target
 
 name: a barbarian
 internal_name: adventurer_barbarian

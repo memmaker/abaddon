@@ -2,27 +2,20 @@
 #FIELDS: internal_name icon dlvl name activation_condition allowed_usage default_args
 
 internal_name: replicate_with
-icon: 194
+icon: 11
 dlvl: 1
 name: Clone Self
 activation_condition: can_replicate
 allowed_usage: wand | shrine
 
-internal_name: heal_health_mana_full
-icon: 333
+internal_name: firestarter
+icon: 33
 dlvl: 1
-name: Heal Health and Mana
-allowed_usage: wand | shrine
-
-internal_name: heal_health
-icon: 332
-dlvl: 1
-name: Heal Health
-default_args: 20
+name: Firestarter
 allowed_usage: wand | shrine
 
 internal_name: apply_berserk_self
-icon: 135
+icon: 714
 dlvl: 1
 name: Berserk
 default_args: 4-6 | 5
@@ -33,25 +26,11 @@ icon: 30
 dlvl: 1
 name: Apply Status Effect
 
-internal_name: heal_mana
-icon: 329
-dlvl: 1
-name: Heal Mana
-default_args: 20
-allowed_usage: wand | shrine
-
 internal_name: random_near_teleport
-icon: 194
+icon: 107
 dlvl: 1
 name: Phase Door
 default_args: 7-14
-allowed_usage: wand | shrine
-
-internal_name: buff_damage
-icon: 114
-dlvl: 1
-name: Buff Damage
-default_args: 4-6 | 5
 allowed_usage: wand | shrine
 
 internal_name: buff_speed
@@ -62,14 +41,14 @@ default_args: 4-6 | 5
 allowed_usage: wand | shrine
 
 internal_name: recall
-icon: 223
+icon: 194
 dlvl: 1
 name: Recall
 activation_delay: 5
 allowed_usage: wand | shrine
 
 internal_name: buff_armor
-icon: 116
+icon: 690
 dlvl: 1
 name: Bless
 default_args: 4-6 | 5
@@ -95,28 +74,29 @@ default_args: 3
 allowed_usage: wand | shrine
 
 internal_name: telefrag
-icon: 223
+icon: 39
 dlvl: 1
 name: Telefrag
 default_args: 7-14
 allowed_usage: wand | shrine
 
 internal_name: stoneskin
-icon: 223
+icon: 444
 dlvl: 1
 name: Stone Skin
 default_args: 5-10
 allowed_usage: wand | shrine
 
 internal_name: acquirement
-icon: 223
+icon: 273
 dlvl: 1
 name: Acquirement
 allowed_usage: wand | shrine
 
 internal_name: earthquake
-icon: 223
+icon: 9
 dlvl: 1
 name: Earthquake
 default_args: 8
 allowed_usage: shrine | scroll
+

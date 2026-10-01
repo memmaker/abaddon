@@ -1,67 +1,146 @@
 %rec: default
 #FIELDS: name internal_name icon dlvl cost charges max_level out_of_depth_chance min_level_for_ood category armor_type armor_class weapon_type weapon_damage weapon_speed ranged_max_range ranged_accuracy_at_min_range ranged_accuracy_at_max_range ranged_projectile_icon throw_hit_zone throw_damage throw_chance_to_break throw_on_hit_effect light_color light_flicker_pattern light_flicker_frame_delay equip_modifier untargeted_action targeted_action
 
-name: Scroll of Phase Door
+name: Phase Door
 internal_name: scroll_of_random_teleport
+icon: 139
+dlvl: 1
+cost: 15
+category: scroll
+untargeted_action: random_near_teleport(7-14)
+
+name: Blessing
+internal_name: scroll_of_blessing
+icon: 139
+dlvl: 1
+cost: 20
+category: scroll
+untargeted_action: buff_armor(6)
+
+name: Enchant Weapon
+internal_name: scroll_of_enchant_weapon
 icon: 139
 dlvl: 1
 cost: 50
 category: scroll
-untargeted_action: random_near_teleport(7-14)
+untargeted_action: enchant_weapon
 
-name: Scroll of Word of Recall
-internal_name: scroll_of_recall
+name: Enchant Armor
+internal_name: scroll_of_enchant_armor
+icon: 139
+dlvl: 1
+cost: 30
+category: scroll
+untargeted_action: enchant_armor
+
+name: Angelic Pockets
+internal_name: scroll_of_acquirement
 icon: 139
 dlvl: 1
 cost: 75
 category: scroll
-untargeted_action: recall
+untargeted_action: acquirement
 
-name: Scroll of Blessing
-internal_name: scroll_of_blessing
-icon: 139
-dlvl: 1
-cost: 180
-category: scroll
-untargeted_action: buff_armor(6)
-
-name: Scroll of Enchant Weapon
-internal_name: scroll_of_enchant_weapon
-icon: 139
-dlvl: 1
-cost: 4000
-category: scroll
-untargeted_action: enchant_weapon
-
-name: Scroll of Enchant Armor
-internal_name: scroll_of_enchant_armor
-icon: 139
-dlvl: 1
-cost: 4000
-category: scroll
-untargeted_action: enchant_armor
-
-name: Scroll of Acquirement
-internal_name: scroll_of_acquirement
+name: Summon Familiar
+internal_name: scroll_of_summoning
 icon: 139
 dlvl: 1
 cost: 10
 category: scroll
-untargeted_action: acquirement
-
-name: Scroll of Summoning
-internal_name: scroll_of_summoning
-icon: 139
-dlvl: 1
-cost: 100
-category: scroll
 targeted_action: summon_monster(1d10)
 
-name: Scroll of Earthquake
+name: Earthquake
 internal_name: scroll_of_earthquake
+icon: 139
+dlvl: 1
+cost: 16
+category: scroll
+untargeted_action: earthquake
+
+name: Bridge
+internal_name: scroll_of_bridge
 icon: 139
 dlvl: 1
 cost: 5
 category: scroll
-untargeted_action: earthquake
+targeted_action: bridge_chasm
 
+name: Pits of Hell
+internal_name: scroll_of_depth
+icon: 139
+dlvl: 1
+cost: 6
+category: scroll
+targeted_action: break_floor
+
+name: Poison
+internal_name: scroll_of_poison
+icon: 139
+dlvl: 1
+cost: 13
+category: scroll
+targeted_action: poison_target
+
+name: Immobility
+internal_name: scroll_of_immobility
+icon: 139
+dlvl: 1
+cost: 13
+category: scroll
+targeted_action: immobilize_target
+
+name: Confusion
+internal_name: scroll_of_confusion
+icon: 139
+dlvl: 1
+cost: 13
+category: scroll
+targeted_action: confuse_target
+
+name: Earth Shaker
+internal_name: scroll_of_earth_shaker
+icon: 139
+dlvl: 1
+cost: 9
+category: scroll
+targeted_action: earth_shaker
+
+name: Firestarter
+internal_name: scroll_of_firestarter
+icon: 139
+dlvl: 1
+cost: 11
+category: scroll
+untargeted_action: firestarter
+
+name: Jump Start
+internal_name: scroll_of_jump_start
+icon: 139
+dlvl: 1
+cost: 7
+category: scroll
+targeted_action: jump_start
+
+name: Blink
+internal_name: scroll_of_blink
+icon: 139
+dlvl: 1
+cost: 25
+category: scroll
+targeted_action: blink
+
+name: Fireball
+internal_name: scroll_of_fireball
+icon: 139
+dlvl: 1
+cost: 40
+category: scroll
+targeted_action: fireball
+
+name: Mind Push
+internal_name: scroll_of_mind_push
+icon: 139
+dlvl: 1
+cost: 8
+category: scroll
+targeted_action: mind_push
